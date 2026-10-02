@@ -92,7 +92,11 @@ li.task:hover{background:var(--hover)}
 li.task.hi{border-left-color:var(--over)}
 li.task.lo{border-left-color:var(--low)}
 li.task .body{flex:1;min-width:0}
-li.task .txt{word-break:break-word;font-weight:500}
+li.task .txt{word-break:break-word;font-weight:500;cursor:text;border-radius:6px;margin:-2px -4px;padding:2px 4px}
+li.task .txt:hover{background:var(--accent-soft)}
+li.task input.inline{width:100%;height:34px;font-weight:500;padding:0 8px;margin:-4px 0 0 -8px;border-color:var(--accent)}
+.edit-btn{flex:none;border:0;background:none;cursor:pointer;font-size:15px;opacity:.5;padding:4px 6px;border-radius:8px}
+.edit-btn:hover{opacity:1;background:var(--line)}
 li.task.done .txt{text-decoration:line-through;color:var(--muted)}
 li.task .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;align-items:center}
 li.task .when{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -454,8 +458,27 @@ function taskEl(it, { showDate = true } = {}){
     showDate && it.date && h('span', { class:'when' }, '📅 ' + fmtDay(it.date) + (it.time ? ' · ' + it.time : '')),
     !showDate && it.time && h('span', { class:'when' }, '🕑 ' + it.time),
     it.note && h('span', { class:'when', title:it.note }, '📝'));
+  const txt = h('div', { class:'txt', title:'Klikni a uprav text', onclick:e => { e.stopPropagation(); inlineEdit(txt, it) } }, it.text);
+  const edit = h('button', { class:'edit-btn', title:'Upraviť detaily (dátum, stav, priorita, poznámka)', 'aria-label':'Upraviť',
+    onclick:e => { e.stopPropagation(); openEdit(it) } }, '✏️');
   return h('li', { class:'task ' + it.status + (it.prio === 'high' ? ' hi' : it.prio === 'low' ? ' lo' : ''), onclick:() => openEdit(it) },
-    mark, h('div', { class:'body' }, h('div', { class:'txt' }, it.text), meta));
+    mark, h('div', { class:'body' }, txt, meta), edit);
+}
+
+// quick text edit right in the list: Enter / click away = save, Esc = cancel
+function inlineEdit(txt, it){
+  const inp = h('input', { type:'text', class:'inline', value:it.text, enterkeyhint:'done' });
+  let finished = false;
+  const finish = ok => {
+    if(finished) return; finished = true;
+    const v = inp.value.trim();
+    if(ok && v && v !== it.text){ it.text = v; save() } else render();
+  };
+  inp.onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); finish(true) } else if(e.key === 'Escape') finish(false) };
+  inp.onblur = () => finish(true);
+  inp.onclick = e => e.stopPropagation();
+  txt.replaceWith(inp);
+  inp.focus(); inp.select();
 }
 
 // ---------- router ----------
