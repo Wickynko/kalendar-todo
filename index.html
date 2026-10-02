@@ -179,6 +179,8 @@ form.quick input[type=time]{width:100px;padding:0 6px}
 .chips button.on{background:var(--text);color:var(--bg);border-color:var(--text)}
 .group h3{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:22px 4px 8px;display:flex;gap:8px;align-items:center}
 .group h3.over{color:var(--over)}
+.group h3.low{color:var(--low)}
+.group h3.donegrp{color:var(--done)}
 .group h3 small{font-weight:500;text-transform:none;letter-spacing:0}
 
 @media (max-width:900px){
@@ -304,6 +306,7 @@ dialog .row .danger{margin-right:auto}
     <div class="toolbar">
       <input type="search" id="search" placeholder="Hľadať…">
       <div class="chips" id="scopeChips"></div>
+      <div class="chips" id="sortChips"></div>
     </div>
 
     <div id="groups"></div>
@@ -401,6 +404,11 @@ function fmtDay(s, long){
 }
 const byTime = (a, b) => (a.time || '99').localeCompare(b.time || '99');
 const statusOrder = { doing:0, todo:1, done:2 };
+const prioOrder = { high:0, mid:1, low:2 };
+// importance: unfinished first, then priority (high → low), overdue, in progress, then time
+const byImportance = (a, b) => (a.status === 'done') - (b.status === 'done')
+  || prioOrder[a.prio || 'mid'] - prioOrder[b.prio || 'mid']
+  || isOver(b) - isOver(a) || statusOrder[a.status] - statusOrder[b.status] || byTime(a, b);
 
 // ---------- European date (dd.mm.rrrr) & 24h time fields ----------
 const euro = iso => { if(!iso) return ''; const [y,m,d] = iso.split('-'); return `${d}.${m}.${y}` };
@@ -511,7 +519,7 @@ function renderCal(){
   for(let i = 0; i < 42; i++){
     const d = new Date(start); d.setDate(start.getDate() + i);
     const k = key(d);
-    const items = (byDate[k] || []).slice().sort((a,b) => statusOrder[a.status] - statusOrder[b.status] || byTime(a,b));
+    const items = (byDate[k] || []).slice().sort(byImportance);
     const cls = it => isOver(it) ? 'over' : it.status;
     grid.append(h('div', {
         class:'day' + (d.getMonth() !== view.getMonth() ? ' other' : '') + (k === t ? ' today' : '') + (k === sel ? ' sel' : ''),
@@ -524,7 +532,7 @@ function renderCal(){
   }
   // day panel
   $('dayTitle').textContent = fmtDay(sel, true);
-  const items = data.items.filter(it => it.date === sel).sort((a,b) => statusOrder[a.status] - statusOrder[b.status] || byTime(a,b));
+  const items = data.items.filter(it => it.date === sel).sort(byImportance);
   const done = items.filter(x => x.status === 'done').length;
   $('dayCount').textContent = items.length ? `${done}/${items.length} hotových` : '';
   $('dayBar').style.width = items.length ? (done / items.length * 100) + '%' : '0';
@@ -533,7 +541,7 @@ function renderCal(){
   else items.forEach(it => ul.append(taskEl(it, { showDate:false })));
 
   // undated to-dos
-  const nd = data.items.filter(it => !it.date).sort((a,b) => statusOrder[a.status] - statusOrder[b.status]);
+  const nd = data.items.filter(it => !it.date).sort(byImportance);
   const ndDone = nd.filter(x => x.status === 'done').length;
   $('ndCount').textContent = nd.length ? `${ndDone}/${nd.length} hotových` : '';
   const ndl = $('ndList'); ndl.innerHTML = '';
@@ -568,6 +576,8 @@ $('grid').addEventListener('touchend', e => {
 let statusFilter = 'all';   // all | todo | doing | done | over
 let scope = 'all';          // all | today | week | nodate
 const SCOPES = { all:'Všetky', today:'Dnes', week:'Tento týždeň', nodate:'Bez dátumu' };
+const SORTS = { prio:'⇅ Podľa dôležitosti', date:'⇅ Podľa dátumu' };
+let sortMode = store.get('sortMode', 'prio');
 
 function renderTasks(){
   const all = data.items;
@@ -589,6 +599,9 @@ function renderTasks(){
   const chips = $('scopeChips'); chips.innerHTML = '';
   for(const [k, label] of Object.entries(SCOPES))
     chips.append(h('button', { class:scope === k ? 'on' : '', onclick:() => { scope = k; renderTasks() } }, label));
+  const sorts = $('sortChips'); sorts.innerHTML = '';
+  for(const [k, label] of Object.entries(SORTS))
+    sorts.append(h('button', { class:sortMode === k ? 'on' : '', onclick:() => { sortMode = k; store.set('sortMode', k); renderTasks() } }, label));
 
   const t = todayKey(), weekEnd = addDays(t, 6);
   const q = $('search').value.trim().toLowerCase();
@@ -597,22 +610,32 @@ function renderTasks(){
     (scope === 'all' || (scope === 'today' && it.date === t) || (scope === 'week' && it.date >= t && it.date <= weekEnd) || (scope === 'nodate' && !it.date)) &&
     (!q || (it.text + ' ' + (it.note || '')).toLowerCase().includes(q)));
 
-  // groups: overdue, then by date, then no date
-  const groups = new Map();
-  const push = (k, it) => { if(!groups.has(k)) groups.set(k, []); groups.get(k).push(it) };
-  list.slice().sort((a,b) => (a.date || '9999').localeCompare(b.date || '9999') || byTime(a,b))
-    .forEach(it => push(isOver(it) ? '!over' : it.date || '~nodate', it));
-  const order = [...groups.keys()].sort((a,b) => a === '!over' ? -1 : b === '!over' ? 1 : a.localeCompare(b));
-
   const wrap = $('groups'); wrap.innerHTML = '';
   if(!list.length){ wrap.append(h('div', { class:'empty' }, all.length ? 'Nič nezodpovedá filtru.' : 'Zatiaľ žiadne úlohy. Pridaj prvú hore 👆')); return }
-  for(const k of order){
-    const items = groups.get(k).sort((a,b) => statusOrder[a.status] - statusOrder[b.status] || byTime(a,b));
+
+  const groups = new Map();
+  const push = (k, it) => { if(!groups.has(k)) groups.set(k, []); groups.get(k).push(it) };
+  const draw = (k, title, cls, items, showDate) => {
     const done = items.filter(x => x.status === 'done').length;
-    const title = k === '!over' ? '⚠ Po termíne' : k === '~nodate' ? 'Bez dátumu' : fmtDay(k, true);
     wrap.append(h('div', { class:'group' },
-      h('h3', { class:k === '!over' ? 'over' : '' }, title, h('small', {}, `${done}/${items.length}`)),
-      h('ul', { class:'tasks' }, items.map(it => taskEl(it, { showDate:k === '!over' })))));
+      h('h3', { class:cls }, title, h('small', {}, `${done}/${items.length}`)),
+      h('ul', { class:'tasks' }, items.map(it => taskEl(it, { showDate })))));
+  };
+
+  if(sortMode === 'prio'){
+    // groups by importance; inside: overdue first, then nearest date
+    const byDate = (a, b) => isOver(b) - isOver(a) || (a.date || '9999').localeCompare(b.date || '9999') || byTime(a, b);
+    list.forEach(it => push(it.status === 'done' ? 'done' : it.prio || 'mid', it));
+    const PG = { high:['▲ Vysoká priorita', 'over'], mid:['● Stredná priorita', ''], low:['▼ Nízka priorita', 'low'], done:['✓ Hotové', 'donegrp'] };
+    for(const k of ['high', 'mid', 'low', 'done'])
+      if(groups.has(k)) draw(k, PG[k][0], PG[k][1], groups.get(k).sort(byDate), true);
+  } else {
+    // groups: overdue, then by date, then no date; inside by importance
+    list.forEach(it => push(isOver(it) ? '!over' : it.date || '~nodate', it));
+    const order = [...groups.keys()].sort((a,b) => a === '!over' ? -1 : b === '!over' ? 1 : a.localeCompare(b));
+    for(const k of order)
+      draw(k, k === '!over' ? '⚠ Po termíne' : k === '~nodate' ? 'Bez dátumu' : fmtDay(k, true),
+        k === '!over' ? 'over' : '', groups.get(k).sort(byImportance), k === '!over');
   }
 }
 
