@@ -215,6 +215,12 @@ dialog input,dialog textarea,dialog select{width:100%}
 dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
 dialog .row .danger{margin-right:auto}
+.calbox{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.calbtns{display:flex;flex-wrap:wrap;gap:8px}
+.calbtns .btn{text-decoration:none;flex:1 1 auto}
+.calbtns.off{opacity:.4;pointer-events:none}
+dialog p.hint{font-size:13px;margin-top:10px}
+.legend .to-phone{margin-left:auto;height:32px;font-size:13px;padding:0 12px}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .seg button{height:42px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);cursor:pointer;
   font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px}
@@ -257,6 +263,7 @@ dialog .row .danger{margin-right:auto}
         <div class="legend">
           <span><i class="todo"></i>Nezačaté</span><span><i class="doing"></i>Rozpracované</span>
           <span><i class="done"></i>Hotové</span><span><i class="over"></i>Po termíne</span>
+          <button class="btn to-phone" id="toPhone" type="button">📲 Do kalendára v mobile</button>
         </div>
       </div>
 
@@ -351,6 +358,17 @@ dialog .row .danger{margin-right:auto}
     (stačí zaškrtnúť len <b>gist</b>) a vlož ho sem. Na mobile vlož ten istý token.</p>
   <input type="password" id="tokenIn" placeholder="ghp_…" autocomplete="off" style="width:100%">
   <p id="syncInfo"></p>
+
+  <div class="calbox">
+    <h3>📲 Kalendár v mobile</h3>
+    <p id="calInfo"></p>
+    <div class="calbtns" id="calBtns">
+      <a class="btn primary" id="calApple">Pridať do Kalendára (iPhone / Mac)</a>
+      <button class="btn" type="button" id="calCopy">Kopírovať odkaz</button>
+    </div>
+    <p class="hint">Alebo <a href="#" id="calDownload">stiahni .ics súbor</a> – jednorazový import bez automatických zmien.</p>
+  </div>
+
   <div class="row">
     <button class="btn danger" id="logout">Odpojiť</button>
     <button class="btn" id="closeDlg">Zavrieť</button>
@@ -677,9 +695,39 @@ $('eDel').onclick = () => {
 };
 $('eCancel').onclick = () => $('editDlg').close();
 
+// ================= iCalendar feed (for phone calendar) =================
+const ICS = 'planovac.ics';
+const icsEsc = s => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+function fold(line){
+  const out = [];
+  while(line.length > 70){ out.push(line.slice(0, 70)); line = ' ' + line.slice(70) }
+  out.push(line);
+  return out.join('\r\n');
+}
+function buildICS(){
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Planovac//SK', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    'X-WR-CALNAME:Plánovač', 'X-WR-TIMEZONE:Europe/Bratislava', 'REFRESH-INTERVAL;VALUE=DURATION:PT15M', 'X-PUBLISHED-TTL:PT15M'];
+  for(const it of data.items){
+    if(!it.date) continue;
+    const d = it.date.replace(/-/g, '');
+    const mark = (it.prio === 'high' ? '❗' : '') + (it.status === 'done' ? '✓ ' : it.status === 'doing' ? '◐ ' : '');
+    L.push('BEGIN:VEVENT', 'UID:' + it.id + '@planovac', 'DTSTAMP:' + stamp);
+    if(it.time) L.push('DTSTART:' + d + 'T' + it.time.replace(':', '') + '00', 'DURATION:PT30M');
+    else L.push('DTSTART;VALUE=DATE:' + d, 'DTEND;VALUE=DATE:' + addDays(it.date, 1).replace(/-/g, ''));
+    L.push('SUMMARY:' + icsEsc(mark + it.text),
+      'DESCRIPTION:' + icsEsc(['Stav: ' + STATUS[it.status], it.prio === 'high' ? 'Priorita: vysoká' : it.prio === 'low' ? 'Priorita: nízka' : '', it.note || ''].filter(Boolean).join('\n')),
+      'TRANSP:TRANSPARENT', 'END:VEVENT');
+  }
+  L.push('END:VCALENDAR');
+  return L.map(fold).join('\r\n') + '\r\n';
+}
+const gistFiles = () => ({ [FILE]:{ content:JSON.stringify(data) }, [ICS]:{ content:buildICS() } });
+
 // ================= GitHub Gist sync =================
 let token = store.get('token', '');
 let gistId = store.get('gistId', '');
+let gistOwner = store.get('gistOwner', '');
 let pushTimer = null;
 const setDot = s => $('dot').className = 'sync-dot ' + (s || '');
 
@@ -697,7 +745,7 @@ async function findGist(){
     if(list.length < 100) break;
   }
   const g = await gh('/gists', { method:'POST', body:JSON.stringify({
-    description:'Plánovač (dáta)', public:false, files:{ [FILE]:{ content:JSON.stringify(data) } } }) });
+    description:'Plánovač (dáta)', public:false, files:gistFiles() }) });
   return g.id;
 }
 async function pull(){
@@ -706,12 +754,13 @@ async function pull(){
   try{
     if(!gistId){ gistId = await findGist(); store.set('gistId', gistId) }
     const g = await gh('/gists/' + gistId);
+    if(g.owner && g.owner.login !== gistOwner){ gistOwner = g.owner.login; store.set('gistOwner', gistOwner); updateCalBox() }
     const f = g.files[FILE];
     let content = f.content;
     if(f.truncated) content = await (await fetch(f.raw_url)).text();
     const remote = migrate(JSON.parse(content || '{}'));
     if((remote.updated || 0) > (data.updated || 0)){ data = remote; store.set('data', data); render() }
-    else if((remote.updated || 0) < (data.updated || 0)) await push();
+    else if((remote.updated || 0) < (data.updated || 0) || !g.files[ICS]) await push();
     setDot('ok');
   }catch(err){ console.error(err); setDot('err'); $('syncInfo').textContent = 'Chyba: ' + err.message }
 }
@@ -719,13 +768,38 @@ async function push(){
   if(!token || !gistId) return;
   setDot('busy');
   try{
-    await gh('/gists/' + gistId, { method:'PATCH', body:JSON.stringify({ files:{ [FILE]:{ content:JSON.stringify(data) } } }) });
+    await gh('/gists/' + gistId, { method:'PATCH', body:JSON.stringify({ files:gistFiles() }) });
     setDot('ok');
   }catch(err){ console.error(err); setDot('err') }
 }
 function schedulePush(){ clearTimeout(pushTimer); if(token) pushTimer = setTimeout(push, 800) }
 
+// phone calendar subscription links
+function updateCalBox(){
+  const ok = token && gistId && gistOwner;
+  $('calBtns').classList.toggle('off', !ok);
+  $('calInfo').textContent = ok
+    ? 'Úlohy s dátumom sa zobrazia v kalendári telefónu a samé sa aktualizujú. Klikni na tlačidlo na mobile, kde máš kalendár.'
+    : 'Najprv vyššie pripoj GitHub token – potom sa úlohy dajú pridať do kalendára v mobile a budú sa samé aktualizovať.';
+  if(!ok) return;
+  const url = `https://gist.githubusercontent.com/${gistOwner}/${gistId}/raw/${ICS}`;
+  const webcal = url.replace(/^https:/, 'webcal:');
+  $('calApple').href = webcal;
+  $('calCopy').onclick = async () => {
+    try{ await navigator.clipboard.writeText(url); $('calCopy').textContent = '✓ Skopírované' }
+    catch{ prompt('Skopíruj odkaz:', url) }
+    setTimeout(() => $('calCopy').textContent = 'Kopírovať odkaz', 1500);
+  };
+}
+$('calDownload').onclick = e => {
+  e.preventDefault();
+  const a = h('a', { href:URL.createObjectURL(new Blob([buildICS()], { type:'text/calendar' })), download:'planovac.ics' });
+  document.body.append(a); a.click(); a.remove();
+};
+$('toPhone').onclick = () => $('syncBtn').click();
+
 $('syncBtn').onclick = () => {
+  updateCalBox();
   $('tokenIn').value = token;
   $('syncInfo').textContent = token ? (gistId ? '✅ Pripojené, synchronizuje sa.' : 'Token uložený.') : 'Zatiaľ sa ukladá len v tomto zariadení.';
   $('syncDlg').showModal();
@@ -736,10 +810,10 @@ $('saveToken').onclick = async () => {
   gistId = ''; store.set('gistId', '');
   $('syncInfo').textContent = 'Pripájam…';
   await pull();
-  if(gistId){ $('syncInfo').textContent = '✅ Pripojené!'; setTimeout(() => $('syncDlg').close(), 700) }
+  if(gistId){ $('syncInfo').textContent = '✅ Pripojené! Nižšie si pridaj úlohy do kalendára v mobile.'; await push(); updateCalBox() }
 };
 $('logout').onclick = () => {
-  token = ''; gistId = ''; store.set('token', ''); store.set('gistId', '');
+  token = ''; gistId = ''; gistOwner = ''; store.set('token', ''); store.set('gistId', ''); store.set('gistOwner', ''); updateCalBox();
   setDot(''); $('tokenIn').value = ''; $('syncInfo').textContent = 'Odpojené. Dáta ostali v tomto zariadení.';
 };
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') pull() });
