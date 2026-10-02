@@ -110,7 +110,7 @@ textarea{height:auto;min-height:80px;padding:10px 12px;resize:vertical}
 input:focus,select:focus,textarea:focus{border-color:var(--accent)}
 
 /* ---------- calendar page ---------- */
-.cal-layout{display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start}
+.cal-layout{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;align-items:start}
 .cal{padding:16px}
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px}
 .cal-head h2{text-transform:capitalize;font-size:22px}
@@ -147,7 +147,7 @@ form.quick input[type=time]{width:100px;padding:0 6px}
 .mini-progress div{height:100%;background:var(--done);transition:width .3s}
 
 @media (max-width:1000px){
-  .cal-layout{grid-template-columns:1fr}
+  .cal-layout{grid-template-columns:minmax(0,1fr)}
   .day-panel{position:static}
 }
 @media (max-width:760px){
@@ -186,7 +186,7 @@ form.quick input[type=time]{width:100px;padding:0 6px}
 @media (max-width:900px){
   .stats{grid-template-columns:repeat(3,1fr)}
   .add-big{grid-template-columns:1fr 1fr}
-  .add-big input[type=text]{grid-column:1/-1}
+  .add-big #tText{grid-column:1/-1}
   .add-big input[type=date],.add-big input[type=time]{width:100%}
 }
 @media (max-width:520px){
@@ -204,6 +204,30 @@ form.quick input[type=time]{width:100px;padding:0 6px}
 input.bad{border-color:var(--over)!important;background:var(--over-soft)}
 input.ttext{width:90px;text-align:center}
 
+/* ---------- phone fixes ---------- */
+html,body{overflow-x:clip}
+@media (max-width:760px){
+  /* 16px stops iOS Safari from zooming in on inputs (that's what cut the page off) */
+  input,select,textarea{font-size:16px}
+  /* backdrop-filter would trap the fixed bottom tab bar inside the header */
+  .top{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--bg)}
+  .add-big .ttext{width:100%}
+  form.quick input.ttext{flex:none;width:84px}
+  .top-in{padding:10px 16px}
+  .cal-head h2{font-size:18px}
+  .cal-head .nav .btn{height:36px;min-width:36px;padding:0 10px}
+  .day .n{font-size:14px}
+  .seg button{font-size:13px;padding:0 4px;line-height:1.1;text-align:center}
+  dialog{padding:16px;max-height:88vh;overflow:auto}
+  .legend .to-phone{margin-left:0;width:100%}
+  .stat b{font-size:22px}
+  .toolbar{flex-direction:column;align-items:stretch}
+  .toolbar input[type=search]{flex:none;min-width:0}
+  .chips{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chips button{flex:none}
+}
+
 /* ---------- dialog ---------- */
 dialog{border:0;border-radius:20px;background:var(--card);color:var(--text);width:min(94vw,480px);padding:20px}
 dialog::backdrop{background:rgba(0,0,0,.45)}
@@ -216,6 +240,11 @@ dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
 dialog .row .danger{margin-right:auto}
 .calbox{margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.steps{margin:0 0 12px;padding-left:20px;font-size:14px;color:var(--muted)}
+.steps li{margin:4px 0}
+.steps b{color:var(--text)}
+.qr{display:flex;justify-content:center;margin:0 0 12px}
+.qr canvas,.qr img{background:#fff;padding:10px;border-radius:12px;width:200px;height:200px}
 .calbtns{display:flex;flex-wrap:wrap;gap:8px}
 .calbtns .btn{text-decoration:none;flex:1 1 auto}
 .calbtns.off{opacity:.4;pointer-events:none}
@@ -353,11 +382,23 @@ dialog p.hint{font-size:13px;margin-top:10px}
 <!-- ================= SYNC DIALOG ================= -->
 <dialog id="syncDlg">
   <h3>Synchronizácia cez GitHub</h3>
-  <p>Úlohy sa uložia do súkromného GitHub Gistu, takže ich uvidíš na počítači aj na mobile.
-    Vytvor si token na <a href="https://github.com/settings/tokens/new?scopes=gist&description=Planovac" target="_blank" rel="noopener">github.com/settings/tokens</a>
-    (stačí zaškrtnúť len <b>gist</b>) a vlož ho sem. Na mobile vlož ten istý token.</p>
-  <input type="password" id="tokenIn" placeholder="ghp_…" autocomplete="off" style="width:100%">
+  <ol class="steps">
+    <li><a href="https://github.com/settings/tokens/new?scopes=gist&description=Planovac&default_expires_at=none" target="_blank" rel="noopener">Otvor túto stránku GitHubu</a> → úplne dole zelené <b>Generate token</b>.</li>
+    <li>Skopíruj kód, ktorý začína <b>ghp_</b>.</li>
+    <li>Vlož ho sem a daj <b>Uložiť</b>.</li>
+  </ol>
+  <input type="password" id="tokenIn" placeholder="sem vlož ghp_…" autocomplete="off" style="width:100%">
   <p id="syncInfo"></p>
+
+  <div class="calbox" id="pairBox" hidden>
+    <h3>📱 Pripojiť telefón</h3>
+    <p>Naskenuj QR kód fotoaparátom iPhonu, alebo si pošli odkaz správou. Telefón sa pripojí sám, bez tokenu. Odkaz nikomu inému neposielaj.</p>
+    <div id="qr" class="qr"></div>
+    <div class="calbtns">
+      <a class="btn primary" id="pairSms">Poslať do telefónu správou</a>
+      <button class="btn" type="button" id="pairCopy">Kopírovať odkaz</button>
+    </div>
+  </div>
 
   <div class="calbox">
     <h3>📲 Kalendár v mobile</h3>
@@ -798,8 +839,41 @@ $('calDownload').onclick = e => {
 };
 $('toPhone').onclick = () => $('syncBtn').click();
 
+// pair a phone: link carries the token in the #hash (never sent to any server)
+const pairLink = () => location.origin + location.pathname + '#pripoj=' + encodeURIComponent(token);
+let qrLib = null;
+function loadQR(){
+  return qrLib ||= new Promise((ok, fail) => {
+    const sc = h('script', { src:'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js' });
+    sc.onload = ok; sc.onerror = fail; document.head.append(sc);
+  });
+}
+async function updatePairBox(){
+  const ok = !!(token && gistId);
+  $('pairBox').hidden = !ok;
+  if(!ok) return;
+  const link = pairLink();
+  $('pairSms').href = 'sms:&body=' + encodeURIComponent('Plánovač – pripojenie: ' + link);
+  $('pairCopy').onclick = async () => {
+    try{ await navigator.clipboard.writeText(link); $('pairCopy').textContent = '✓ Skopírované' }
+    catch{ prompt('Skopíruj odkaz:', link) }
+    setTimeout(() => $('pairCopy').textContent = 'Kopírovať odkaz', 1500);
+  };
+  $('qr').innerHTML = '';
+  try{ await loadQR(); new QRCode($('qr'), { text:link, width:200, height:200, correctLevel:QRCode.CorrectLevel.L }) }
+  catch{ $('qr').textContent = '' }
+}
+function takePairLink(){
+  const m = location.hash.match(/^#pripoj=(.+)$/);
+  if(!m) return false;
+  token = decodeURIComponent(m[1]); store.set('token', token);
+  gistId = ''; store.set('gistId', '');
+  history.replaceState(null, '', location.pathname + '#/kalendar');
+  return true;
+}
+
 $('syncBtn').onclick = () => {
-  updateCalBox();
+  updateCalBox(); updatePairBox();
   $('tokenIn').value = token;
   $('syncInfo').textContent = token ? (gistId ? '✅ Pripojené, synchronizuje sa.' : 'Token uložený.') : 'Zatiaľ sa ukladá len v tomto zariadení.';
   $('syncDlg').showModal();
@@ -810,17 +884,18 @@ $('saveToken').onclick = async () => {
   gistId = ''; store.set('gistId', '');
   $('syncInfo').textContent = 'Pripájam…';
   await pull();
-  if(gistId){ $('syncInfo').textContent = '✅ Pripojené! Nižšie si pridaj úlohy do kalendára v mobile.'; await push(); updateCalBox() }
+  if(gistId){ $('syncInfo').textContent = '✅ Pripojené! Nižšie si pridaj úlohy do kalendára v mobile.'; await push(); updateCalBox(); updatePairBox() }
 };
 $('logout').onclick = () => {
-  token = ''; gistId = ''; gistOwner = ''; store.set('token', ''); store.set('gistId', ''); store.set('gistOwner', ''); updateCalBox();
+  token = ''; gistId = ''; gistOwner = ''; store.set('token', ''); store.set('gistId', ''); store.set('gistOwner', ''); updateCalBox(); updatePairBox();
   setDot(''); $('tokenIn').value = ''; $('syncInfo').textContent = 'Odpojené. Dáta ostali v tomto zariadení.';
 };
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') pull() });
 
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+const paired = takePairLink();
 route();
-pull();
+pull().then(() => { if(paired && gistId) alert('✅ Telefón je pripojený. Úlohy sa synchronizujú.') });
 </script>
 </body>
 </html>
