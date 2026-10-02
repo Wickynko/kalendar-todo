@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kalendár To-Do</title>
+<meta name="theme-color" content="#4f46e5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="To-Do">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{
+  --bg:#f6f6f9; --card:#fff; --text:#16161d; --muted:#7a7a8c; --line:#e7e7ee;
+  --accent:#4f46e5; --accent-soft:#eceafd; --done:#a0a0b0; --danger:#e5484d;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0f0f14;--card:#1a1a22;--text:#ededf2;--muted:#8d8da0;--line:#2a2a36;
+    --accent:#7c74ff;--accent-soft:#25234a;--done:#5d5d6e}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+.app{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 24px)}
+header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+h1{font-size:22px;margin:0;text-transform:capitalize}
+.btn{border:0;background:var(--card);color:var(--text);border-radius:12px;height:40px;min-width:40px;
+  padding:0 12px;font-size:16px;cursor:pointer;box-shadow:0 1px 0 var(--line)}
+.btn.primary{background:var(--accent);color:#fff}
+.nav{display:flex;gap:6px}
+.sync-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:middle}
+.sync-dot.ok{background:#30a46c}.sync-dot.busy{background:#f5a524}.sync-dot.err{background:var(--danger)}
+
+.cal{background:var(--card);border-radius:18px;padding:10px;box-shadow:0 1px 0 var(--line)}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
+.dow div{font-size:12px;color:var(--muted);padding:4px 0 8px}
+.day{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;
+  border-radius:12px;cursor:pointer;font-size:15px;user-select:none}
+.day.other{color:var(--muted);opacity:.45}
+.day.today{color:var(--accent);font-weight:700}
+.day.sel{background:var(--accent);color:#fff;font-weight:600}
+.day .dots{position:absolute;bottom:5px;display:flex;gap:2px}
+.day .dots i{width:4px;height:4px;border-radius:50%;background:var(--accent)}
+.day .dots i.d{background:var(--done)}
+.day.sel .dots i{background:#fff}
+
+.list-head{display:flex;align-items:baseline;justify-content:space-between;margin:20px 2px 10px}
+.list-head h2{font-size:17px;margin:0}
+.list-head span{color:var(--muted);font-size:14px}
+form.add{display:flex;gap:8px;margin-bottom:12px}
+form.add input[type=text]{flex:1;min-width:0}
+input,select{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);
+  border-radius:12px;height:44px;padding:0 12px;outline:none}
+input:focus{border-color:var(--accent)}
+input[type=time]{width:96px;padding:0 6px}
+ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+li{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:14px;padding:12px 12px 12px 14px;box-shadow:0 1px 0 var(--line)}
+li .chk{width:24px;height:24px;border-radius:50%;border:2px solid var(--accent);flex:none;cursor:pointer;display:grid;place-items:center}
+li.done .chk{background:var(--accent)}
+li.done .chk::after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+li .txt{flex:1;word-break:break-word}
+li .time{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+li.done .txt{text-decoration:line-through;color:var(--done)}
+li .del{border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px}
+.empty{color:var(--muted);text-align:center;padding:24px 0}
+
+dialog{border:0;border-radius:18px;background:var(--card);color:var(--text);width:min(92vw,440px);padding:20px}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+dialog h3{margin:0 0 8px}
+dialog p{color:var(--muted);font-size:14px;margin:6px 0 12px}
+dialog input{width:100%;margin-bottom:12px}
+dialog .row{display:flex;gap:8px;justify-content:flex-end}
+dialog a{color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1 id="title"></h1>
+    <div class="nav">
+      <button class="btn" id="prev" aria-label="Predchádzajúci mesiac">‹</button>
+      <button class="btn" id="todayBtn">Dnes</button>
+      <button class="btn" id="next" aria-label="Ďalší mesiac">›</button>
+      <button class="btn" id="syncBtn" aria-label="Synchronizácia"><span class="sync-dot" id="dot"></span>⚙︎</button>
+    </div>
+  </header>
+
+  <div class="cal">
+    <div class="dow"><div>Po</div><div>Ut</div><div>St</div><div>Št</div><div>Pi</div><div>So</div><div>Ne</div></div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="list-head"><h2 id="dayTitle"></h2><span id="count"></span></div>
+  <form class="add" id="addForm">
+    <input type="text" id="newText" placeholder="Nová úloha…" autocomplete="off" enterkeyhint="done">
+    <input type="time" id="newTime">
+    <button class="btn primary" type="submit" aria-label="Pridať">+</button>
+  </form>
+  <ul id="list"></ul>
+</div>
+
+<dialog id="syncDlg">
+  <h3>Synchronizácia cez GitHub</h3>
+  <p>Úlohy sa uložia do súkromného GitHub Gistu, takže ich uvidíš na počítači aj na mobile.
+    Vytvor si token na <a href="https://github.com/settings/tokens/new?scopes=gist&description=Kalendar%20To-Do" target="_blank" rel="noopener">github.com/settings/tokens</a>
+    (stačí zaškrtnúť len <b>gist</b>) a vlož ho sem. Na mobile vlož ten istý token.</p>
+  <input type="password" id="tokenIn" placeholder="ghp_…" autocomplete="off">
+  <p id="syncInfo"></p>
+  <div class="row">
+    <button class="btn" id="logout">Odpojiť</button>
+    <button class="btn" id="closeDlg">Zavrieť</button>
+    <button class="btn primary" id="saveToken">Uložiť</button>
+  </div>
+</dialog>
+
+<script>
+const FILE = 'kalendar-todo.json';
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d }catch{ return d } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch{} }
+};
+
+// data: { tasks: { "YYYY-MM-DD": [{id,text,time,done}] }, updated: ms }
+let data = store.get('data', { tasks:{}, updated:0 });
+let sel = new Date(); sel.setHours(0,0,0,0);
+let view = new Date(sel.getFullYear(), sel.getMonth(), 1);
+
+const key = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const sameDay = (a,b) => key(a) === key(b);
+
+function save(){
+  data.updated = Date.now();
+  store.set('data', data);
+  render();
+  schedulePush();
+}
+
+function render(){
+  $('title').textContent = view.toLocaleDateString('sk-SK', { month:'long', year:'numeric' });
+  const grid = $('grid'); grid.innerHTML = '';
+  const start = new Date(view); start.setDate(1 - ((view.getDay() + 6) % 7));
+  const today = new Date();
+  for(let i = 0; i < 42; i++){
+    const d = new Date(start); d.setDate(start.getDate() + i);
+    const el = document.createElement('div');
+    el.className = 'day' + (d.getMonth() !== view.getMonth() ? ' other' : '')
+      + (sameDay(d, today) ? ' today' : '') + (sameDay(d, sel) ? ' sel' : '');
+    el.textContent = d.getDate();
+    const t = data.tasks[key(d)] || [];
+    if(t.length){
+      const dots = document.createElement('div'); dots.className = 'dots';
+      t.slice(0,3).forEach(x => { const i = document.createElement('i'); if(x.done) i.className = 'd'; dots.appendChild(i) });
+      el.appendChild(dots);
+    }
+    el.onclick = () => { sel = d; if(d.getMonth() !== view.getMonth()) view = new Date(d.getFullYear(), d.getMonth(), 1); render() };
+    grid.appendChild(el);
+  }
+  renderList();
+}
+function renderList(){
+  $('dayTitle').textContent = sameDay(sel, new Date()) ? 'Dnes' :
+    sel.toLocaleDateString('sk-SK', { weekday:'long', day:'numeric', month:'long' });
+  const items = (data.tasks[key(sel)] || []).slice()
+    .sort((a,b) => (a.done - b.done) || (a.time || '99').localeCompare(b.time || '99'));
+  const done = items.filter(x => x.done).length;
+  $('count').textContent = items.length ? `${done}/${items.length}` : '';
+  const ul = $('list'); ul.innerHTML = '';
+  if(!items.length){ ul.innerHTML = '<div class="empty">Žiadne úlohy. Pridaj prvú 👆</div>'; return }
+  for(const it of items){
+    const li = document.createElement('li'); if(it.done) li.className = 'done';
+    li.innerHTML = `<div class="chk"></div><div class="txt"></div>${it.time ? `<span class="time">${it.time}</span>` : ''}<button class="del" aria-label="Zmazať">×</button>`;
+    li.querySelector('.txt').textContent = it.text;
+    li.querySelector('.chk').onclick = () => { it.done = !it.done; save() };
+    li.querySelector('.del').onclick = () => {
+      const k = key(sel);
+      data.tasks[k] = data.tasks[k].filter(x => x.id !== it.id);
+      if(!data.tasks[k].length) delete data.tasks[k];
+      save();
+    };
+    ul.appendChild(li);
+  }
+}
+
+$('addForm').onsubmit = e => {
+  e.preventDefault();
+  const text = $('newText').value.trim(); if(!text) return;
+  const k = key(sel);
+  (data.tasks[k] ||= []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), text, time: $('newTime').value, done:false });
+  $('newText').value = ''; $('newTime').value = '';
+  save();
+};
+$('prev').onclick = () => { view = new Date(view.getFullYear(), view.getMonth()-1, 1); render() };
+$('next').onclick = () => { view = new Date(view.getFullYear(), view.getMonth()+1, 1); render() };
+$('todayBtn').onclick = () => { sel = new Date(); sel.setHours(0,0,0,0); view = new Date(sel.getFullYear(), sel.getMonth(), 1); render() };
+
+// swipe between months
+let sx = null;
+$('grid').addEventListener('touchstart', e => sx = e.touches[0].clientX, { passive:true });
+$('grid').addEventListener('touchend', e => {
+  if(sx === null) return; const dx = e.changedTouches[0].clientX - sx; sx = null;
+  if(Math.abs(dx) > 50) (dx < 0 ? $('next') : $('prev')).click();
+});
+
+// ---------- GitHub Gist sync ----------
+let token = store.get('token', '');
+let gistId = store.get('gistId', '');
+let pushTimer = null;
+const setDot = s => $('dot').className = 'sync-dot ' + (s || '');
+
+async function gh(path, opts = {}){
+  const r = await fetch('https://api.github.com' + path, { ...opts, headers:{
+    'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', ...(opts.body ? {'Content-Type':'application/json'} : {}) } });
+  if(!r.ok) throw new Error(r.status + ' ' + (await r.text()).slice(0,120));
+  return r.json();
+}
+
+async function findGist(){
+  for(let page = 1; page <= 5; page++){
+    const list = await gh(`/gists?per_page=100&page=${page}`);
+    const g = list.find(g => g.files && g.files[FILE]);
+    if(g) return g.id;
+    if(list.length < 100) break;
+  }
+  const g = await gh('/gists', { method:'POST', body: JSON.stringify({
+    description:'Kalendár To-Do (dáta)', public:false, files:{ [FILE]: { content: JSON.stringify(data) } } }) });
+  return g.id;
+}
+
+async function pull(){
+  if(!token) return setDot('');
+  setDot('busy');
+  try{
+    if(!gistId){ gistId = await findGist(); store.set('gistId', gistId) }
+    const g = await gh('/gists/' + gistId);
+    const f = g.files[FILE];
+    let content = f.content;
+    if(f.truncated) content = await (await fetch(f.raw_url)).text();
+    const remote = JSON.parse(content || '{}');
+    if((remote.updated || 0) > (data.updated || 0)){ data = remote; store.set('data', data); render() }
+    else if((remote.updated || 0) < (data.updated || 0)) await push();
+    setDot('ok');
+  }catch(err){ console.error(err); setDot('err'); $('syncInfo').textContent = 'Chyba: ' + err.message }
+}
+
+async function push(){
+  if(!token || !gistId) return;
+  setDot('busy');
+  try{
+    await gh('/gists/' + gistId, { method:'PATCH', body: JSON.stringify({ files:{ [FILE]: { content: JSON.stringify(data) } } }) });
+    setDot('ok');
+  }catch(err){ console.error(err); setDot('err') }
+}
+function schedulePush(){ clearTimeout(pushTimer); if(token) pushTimer = setTimeout(push, 800) }
+
+$('syncBtn').onclick = () => {
+  $('tokenIn').value = token;
+  $('syncInfo').textContent = token ? (gistId ? '✅ Pripojené, synchronizuje sa.' : 'Token uložený.') : 'Zatiaľ sa ukladá len v tomto zariadení.';
+  $('syncDlg').showModal();
+};
+$('closeDlg').onclick = () => $('syncDlg').close();
+$('saveToken').onclick = async () => {
+  token = $('tokenIn').value.trim(); store.set('token', token);
+  gistId = ''; store.set('gistId', '');
+  $('syncInfo').textContent = 'Pripájam…';
+  await pull();
+  if(gistId) { $('syncInfo').textContent = '✅ Pripojené!'; setTimeout(() => $('syncDlg').close(), 700) }
+};
+$('logout').onclick = () => {
+  token = ''; gistId = ''; store.set('token', ''); store.set('gistId', '');
+  setDot(''); $('tokenIn').value = ''; $('syncInfo').textContent = 'Odpojené. Dáta ostali v tomto zariadení.';
+};
+
+// refresh from GitHub when app comes back to foreground
+document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') pull() });
+
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+render();
+pull();
+</script>
+</body>
+</html>
