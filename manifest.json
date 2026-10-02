@@ -1,6 +1,6 @@
 {
-  "name": "Kalendár To-Do",
-  "short_name": "To-Do",
+  "name": "Plánovač",
+  "short_name": "Plánovač",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

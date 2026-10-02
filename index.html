@@ -3,113 +3,329 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Kalendár To-Do</title>
+<title>Plánovač</title>
 <meta name="theme-color" content="#4f46e5">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="To-Do">
+<meta name="apple-mobile-web-app-title" content="Plánovač">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
 :root{
-  --bg:#f6f6f9; --card:#fff; --text:#16161d; --muted:#7a7a8c; --line:#e7e7ee;
-  --accent:#4f46e5; --accent-soft:#eceafd; --done:#a0a0b0; --danger:#e5484d;
+  --bg:#f4f4f8; --card:#fff; --text:#16161d; --muted:#767688; --line:#e6e6ee; --hover:#f0f0f6;
+  --accent:#4f46e5; --accent-soft:#eceafd;
+  --todo:#8b8ba0; --todo-soft:#efeff4;
+  --doing:#e8930c; --doing-soft:#fdf1dc;
+  --done:#2f9e5f; --done-soft:#e2f5ea;
+  --over:#e5484d; --over-soft:#fde7e8;
+  --low:#3b82f6; --low-soft:#e3edfe;
+  --shadow:0 1px 2px rgba(20,20,40,.05),0 0 0 1px var(--line);
 }
 @media (prefers-color-scheme:dark){
-  :root{--bg:#0f0f14;--card:#1a1a22;--text:#ededf2;--muted:#8d8da0;--line:#2a2a36;
-    --accent:#7c74ff;--accent-soft:#25234a;--done:#5d5d6e}
+  :root{--bg:#0e0e13;--card:#191921;--text:#ececf2;--muted:#8e8ea2;--line:#2a2a36;--hover:#22222c;
+    --accent:#7c74ff;--accent-soft:#26244b;
+    --todo:#8e8ea2;--todo-soft:#26262f;--doing:#f5a524;--doing-soft:#3a2c12;
+    --done:#3dd68c;--done-soft:#163526;--over:#ff6369;--over-soft:#3d1a1c;--low:#6ea8ff;--low-soft:#1c2a45}
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--text);
-  font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-.app{max-width:520px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 24px)}
-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-h1{font-size:22px;margin:0;text-transform:capitalize}
-.btn{border:0;background:var(--card);color:var(--text);border-radius:12px;height:40px;min-width:40px;
-  padding:0 12px;font-size:16px;cursor:pointer;box-shadow:0 1px 0 var(--line)}
-.btn.primary{background:var(--accent);color:#fff}
-.nav{display:flex;gap:6px}
-.sync-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:middle}
-.sync-dot.ok{background:#30a46c}.sync-dot.busy{background:#f5a524}.sync-dot.err{background:var(--danger)}
+  font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+button{font:inherit;color:inherit}
+.card{background:var(--card);border-radius:18px;box-shadow:var(--shadow)}
 
-.cal{background:var(--card);border-radius:18px;padding:10px;box-shadow:0 1px 0 var(--line)}
-.dow,.grid{display:grid;grid-template-columns:repeat(7,1fr);text-align:center}
-.dow div{font-size:12px;color:var(--muted);padding:4px 0 8px}
-.day{position:relative;aspect-ratio:1;display:flex;align-items:center;justify-content:center;
-  border-radius:12px;cursor:pointer;font-size:15px;user-select:none}
-.day.other{color:var(--muted);opacity:.45}
-.day.today{color:var(--accent);font-weight:700}
-.day.sel{background:var(--accent);color:#fff;font-weight:600}
-.day .dots{position:absolute;bottom:5px;display:flex;gap:2px}
-.day .dots i{width:4px;height:4px;border-radius:50%;background:var(--accent)}
-.day .dots i.d{background:var(--done)}
-.day.sel .dots i{background:#fff}
+/* ---------- top bar & tabs ---------- */
+.top{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--bg) 85%,transparent);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding-top:env(safe-area-inset-top)}
+.top-in{max-width:1180px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:16px}
+.brand{font-weight:700;font-size:18px;display:flex;align-items:center;gap:8px}
+.brand img{width:28px;height:28px;border-radius:8px}
+.tabs{display:flex;gap:4px;background:var(--card);padding:4px;border-radius:14px;box-shadow:var(--shadow)}
+.tabs a{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;color:var(--muted);
+  text-decoration:none;font-weight:600}
+.tabs a.on{background:var(--accent);color:#fff}
+.tabs a .ic{font-size:17px}
+.spacer{flex:1}
+.btn{border:0;background:var(--card);border-radius:12px;height:40px;min-width:40px;padding:0 14px;
+  cursor:pointer;box-shadow:var(--shadow);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:hover{background:var(--hover)}
+.btn.primary{background:var(--accent);color:#fff;box-shadow:none}
+.btn.danger{color:var(--over)}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--todo)}
+.sync-dot.ok{background:var(--done)}.sync-dot.busy{background:var(--doing)}.sync-dot.err{background:var(--over)}
 
-.list-head{display:flex;align-items:baseline;justify-content:space-between;margin:20px 2px 10px}
-.list-head h2{font-size:17px;margin:0}
-.list-head span{color:var(--muted);font-size:14px}
-form.add{display:flex;gap:8px;margin-bottom:12px}
-form.add input[type=text]{flex:1;min-width:0}
-input,select{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);
-  border-radius:12px;height:44px;padding:0 12px;outline:none}
-input:focus{border-color:var(--accent)}
-input[type=time]{width:96px;padding:0 6px}
-ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
-li{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:14px;padding:12px 12px 12px 14px;box-shadow:0 1px 0 var(--line)}
-li .chk{width:24px;height:24px;border-radius:50%;border:2px solid var(--accent);flex:none;cursor:pointer;display:grid;place-items:center}
-li.done .chk{background:var(--accent)}
-li.done .chk::after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
-li .txt{flex:1;word-break:break-word}
-li .time{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
-li.done .txt{text-decoration:line-through;color:var(--done)}
-li .del{border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px}
-.empty{color:var(--muted);text-align:center;padding:24px 0}
+main{max-width:1180px;margin:0 auto;padding:8px 16px calc(env(safe-area-inset-bottom) + 32px)}
+.page{display:none}.page.on{display:block}
+h2{margin:0;font-size:20px}
 
-dialog{border:0;border-radius:18px;background:var(--card);color:var(--text);width:min(92vw,440px);padding:20px}
-dialog::backdrop{background:rgba(0,0,0,.4)}
-dialog h3{margin:0 0 8px}
+@media (max-width:760px){
+  .tabs{position:fixed;left:16px;right:16px;bottom:calc(env(safe-area-inset-bottom) + 10px);z-index:20;
+    justify-content:space-around;box-shadow:0 8px 30px rgba(0,0,0,.18),0 0 0 1px var(--line)}
+  .tabs a{flex:1;justify-content:center;padding:10px}
+  main{padding-bottom:calc(env(safe-area-inset-bottom) + 96px)}
+}
+
+/* ---------- status markers ---------- */
+.mark{flex:none;width:26px;height:26px;border-radius:50%;border:2.5px solid var(--todo);background:none;
+  cursor:pointer;padding:0;display:grid;place-items:center;transition:transform .12s}
+.mark:active{transform:scale(.85)}
+.mark.doing{border-color:var(--doing);background:conic-gradient(var(--doing) 0 50%,transparent 50% 100%);
+  background-clip:content-box;padding:3px}
+.mark.done{border-color:var(--done);background:var(--done)}
+.mark.done::after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.badge.todo{background:var(--todo-soft);color:var(--todo)}
+.badge.doing{background:var(--doing-soft);color:var(--doing)}
+.badge.done{background:var(--done-soft);color:var(--done)}
+.badge.over{background:var(--over-soft);color:var(--over)}
+.badge.p-high{background:var(--over-soft);color:var(--over)}
+.badge.p-low{background:var(--low-soft);color:var(--low)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted);padding:12px 4px 2px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:50%}
+
+/* ---------- task list ---------- */
+ul.tasks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+li.task{display:flex;align-items:flex-start;gap:12px;background:var(--card);border-radius:14px;
+  padding:12px 14px;box-shadow:var(--shadow);cursor:pointer;border-left:4px solid transparent}
+li.task:hover{background:var(--hover)}
+li.task.hi{border-left-color:var(--over)}
+li.task.lo{border-left-color:var(--low)}
+li.task .body{flex:1;min-width:0}
+li.task .txt{word-break:break-word;font-weight:500}
+li.task.done .txt{text-decoration:line-through;color:var(--muted)}
+li.task .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;align-items:center}
+li.task .when{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.empty{color:var(--muted);text-align:center;padding:28px 0}
+
+input,select,textarea{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);
+  border-radius:12px;height:44px;padding:0 12px;outline:none;min-width:0}
+textarea{height:auto;min-height:80px;padding:10px 12px;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+
+/* ---------- calendar page ---------- */
+.cal-layout{display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start}
+.cal{padding:16px}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px}
+.cal-head h2{text-transform:capitalize;font-size:22px}
+.cal-head .nav{display:flex;gap:6px}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.dow div{font-size:12px;font-weight:600;color:var(--muted);padding:0 8px 8px;text-transform:uppercase}
+.grid{gap:4px}
+.day{min-height:112px;border-radius:12px;padding:6px;cursor:pointer;user-select:none;border:1.5px solid transparent;
+  display:flex;flex-direction:column;gap:3px;overflow:hidden;background:var(--bg)}
+.day:hover{border-color:var(--line)}
+.day .n{font-size:14px;font-weight:600;width:26px;height:26px;display:grid;place-items:center;border-radius:50%}
+.day.other{opacity:.4}
+.day.today .n{background:var(--accent);color:#fff}
+.day.sel{border-color:var(--accent);background:var(--accent-soft)}
+.day .chip{font-size:12px;line-height:1.25;padding:2px 6px;border-radius:6px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;border-left:3px solid}
+.day .chip.todo{background:var(--todo-soft);border-color:var(--todo)}
+.day .chip.doing{background:var(--doing-soft);border-color:var(--doing)}
+.day .chip.done{background:var(--done-soft);border-color:var(--done);text-decoration:line-through;color:var(--muted)}
+.day .chip.over{background:var(--over-soft);border-color:var(--over)}
+.day .more{font-size:11.5px;color:var(--muted);padding-left:6px}
+.day .dots{display:none;gap:3px;justify-content:center;margin-top:auto}
+.day .dots i{width:6px;height:6px;border-radius:50%}
+i.todo{background:var(--todo)}i.doing{background:var(--doing)}i.done{background:var(--done)}i.over{background:var(--over)}
+
+.day-panel{padding:16px;position:sticky;top:84px}
+.panel-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px}
+.panel-head h2{font-size:18px;text-transform:capitalize}
+.panel-head span{color:var(--muted);font-size:13px}
+form.quick{display:flex;gap:8px;margin-bottom:12px}
+form.quick input[type=text]{flex:1}
+form.quick input[type=time]{width:100px;padding:0 6px}
+.mini-progress{height:6px;border-radius:99px;background:var(--line);overflow:hidden;margin:-4px 0 14px}
+.mini-progress div{height:100%;background:var(--done);transition:width .3s}
+
+@media (max-width:1000px){
+  .cal-layout{grid-template-columns:1fr}
+  .day-panel{position:static}
+}
+@media (max-width:760px){
+  .cal{padding:10px}
+  .day{min-height:0;aspect-ratio:1;align-items:center;padding:4px 0;background:none}
+  .day .chip,.day .more{display:none}
+  .day .dots{display:flex}
+  .dow div{text-align:center;padding:0 0 6px}
+}
+
+/* ---------- tasks page ---------- */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.stat{padding:14px 16px;cursor:pointer;border:2px solid transparent}
+.stat.on{border-color:var(--accent)}
+.stat b{display:block;font-size:26px;line-height:1.1}
+.stat span{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.stat span i{width:9px;height:9px;border-radius:50%}
+.progress{padding:14px 16px;margin-bottom:16px}
+.progress .row{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:8px}
+.progress .row b{color:var(--text)}
+.bar{height:10px;border-radius:99px;background:var(--line);overflow:hidden;display:flex}
+.bar div{height:100%;transition:width .3s}
+.add-big{padding:14px;display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;margin-bottom:16px}
+.add-big input[type=date]{width:150px}.add-big input[type=time]{width:105px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+.toolbar input[type=search]{flex:1;min-width:180px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips button{border:1px solid var(--line);background:var(--card);border-radius:99px;height:36px;padding:0 14px;cursor:pointer;font-size:14px}
+.chips button.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.group h3{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:22px 4px 8px;display:flex;gap:8px;align-items:center}
+.group h3.over{color:var(--over)}
+.group h3 small{font-weight:500;text-transform:none;letter-spacing:0}
+
+@media (max-width:900px){
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .add-big{grid-template-columns:1fr 1fr}
+  .add-big input[type=text]{grid-column:1/-1}
+  .add-big input[type=date],.add-big input[type=time]{width:100%}
+}
+@media (max-width:520px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .stats .stat:first-child{grid-column:1/-1}
+  .top-in .brand span{display:none}
+}
+
+/* ---------- dialog ---------- */
+dialog{border:0;border-radius:20px;background:var(--card);color:var(--text);width:min(94vw,480px);padding:20px}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog h3{margin:0 0 12px;font-size:18px}
 dialog p{color:var(--muted);font-size:14px;margin:6px 0 12px}
-dialog input{width:100%;margin-bottom:12px}
-dialog .row{display:flex;gap:8px;justify-content:flex-end}
 dialog a{color:var(--accent)}
+dialog label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+dialog input,dialog textarea,dialog select{width:100%}
+dialog .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:18px}
+dialog .row .danger{margin-right:auto}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg button{height:42px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);cursor:pointer;
+  font-size:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px}
+.seg button.on.todo{border-color:var(--todo);background:var(--todo-soft)}
+.seg button.on.doing{border-color:var(--doing);background:var(--doing-soft);color:var(--doing)}
+.seg button.on.done{border-color:var(--done);background:var(--done-soft);color:var(--done)}
+.seg button.on.low{border-color:var(--low);background:var(--low-soft);color:var(--low)}
+.seg button.on.mid{border-color:var(--text)}
+.seg button.on.high{border-color:var(--over);background:var(--over-soft);color:var(--over)}
 </style>
 </head>
 <body>
-<div class="app">
-  <header>
-    <h1 id="title"></h1>
-    <div class="nav">
-      <button class="btn" id="prev" aria-label="Predchádzajúci mesiac">‹</button>
-      <button class="btn" id="todayBtn">Dnes</button>
-      <button class="btn" id="next" aria-label="Ďalší mesiac">›</button>
-      <button class="btn" id="syncBtn" aria-label="Synchronizácia"><span class="sync-dot" id="dot"></span>⚙︎</button>
-    </div>
-  </header>
-
-  <div class="cal">
-    <div class="dow"><div>Po</div><div>Ut</div><div>St</div><div>Št</div><div>Pi</div><div>So</div><div>Ne</div></div>
-    <div class="grid" id="grid"></div>
+<div class="top">
+  <div class="top-in">
+    <div class="brand"><img src="icon-192.png" alt=""><span>Plánovač</span></div>
+    <nav class="tabs">
+      <a href="#/kalendar" data-page="kalendar"><span class="ic">📅</span>Kalendár</a>
+      <a href="#/ulohy" data-page="ulohy"><span class="ic">✅</span>Úlohy</a>
+    </nav>
+    <div class="spacer"></div>
+    <button class="btn" id="syncBtn" title="Synchronizácia s mobilom"><span class="sync-dot" id="dot"></span>Sync</button>
   </div>
-
-  <div class="list-head"><h2 id="dayTitle"></h2><span id="count"></span></div>
-  <form class="add" id="addForm">
-    <input type="text" id="newText" placeholder="Nová úloha…" autocomplete="off" enterkeyhint="done">
-    <input type="time" id="newTime">
-    <button class="btn primary" type="submit" aria-label="Pridať">+</button>
-  </form>
-  <ul id="list"></ul>
 </div>
 
+<main>
+  <!-- ================= KALENDÁR ================= -->
+  <section class="page" id="pg-kalendar">
+    <div class="cal-layout">
+      <div class="cal card">
+        <div class="cal-head">
+          <h2 id="monthTitle"></h2>
+          <div class="nav">
+            <button class="btn" id="prev" aria-label="Predchádzajúci mesiac">‹</button>
+            <button class="btn" id="todayBtn">Dnes</button>
+            <button class="btn" id="next" aria-label="Ďalší mesiac">›</button>
+          </div>
+        </div>
+        <div class="dow"><div>Po</div><div>Ut</div><div>St</div><div>Št</div><div>Pi</div><div>So</div><div>Ne</div></div>
+        <div class="grid" id="grid"></div>
+        <div class="legend">
+          <span><i class="todo"></i>Nezačaté</span><span><i class="doing"></i>Rozpracované</span>
+          <span><i class="done"></i>Hotové</span><span><i class="over"></i>Po termíne</span>
+        </div>
+      </div>
+
+      <aside class="day-panel card">
+        <div class="panel-head"><h2 id="dayTitle"></h2><span id="dayCount"></span></div>
+        <div class="mini-progress"><div id="dayBar"></div></div>
+        <form class="quick" id="dayAdd">
+          <input type="text" id="dayText" placeholder="Pridať úlohu na tento deň…" autocomplete="off" enterkeyhint="done">
+          <input type="time" id="dayTime">
+          <button class="btn primary" type="submit" aria-label="Pridať">+</button>
+        </form>
+        <ul class="tasks" id="dayList"></ul>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ================= ÚLOHY ================= -->
+  <section class="page" id="pg-ulohy">
+    <div class="stats" id="stats"></div>
+
+    <div class="progress card">
+      <div class="row"><span>Celkový progres</span><b id="progressTxt"></b></div>
+      <div class="bar" id="bar"></div>
+    </div>
+
+    <form class="add-big card" id="taskAdd">
+      <input type="text" id="tText" placeholder="Čo treba urobiť?" autocomplete="off" enterkeyhint="done">
+      <input type="date" id="tDate" title="Dátum (nepovinné)">
+      <input type="time" id="tTime" title="Čas (nepovinné)">
+      <select id="tPrio" title="Priorita">
+        <option value="mid">Stredná priorita</option>
+        <option value="high">▲ Vysoká</option>
+        <option value="low">▼ Nízka</option>
+      </select>
+      <button class="btn primary" type="submit">Pridať</button>
+    </form>
+
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="Hľadať…">
+      <div class="chips" id="scopeChips"></div>
+    </div>
+
+    <div id="groups"></div>
+  </section>
+</main>
+
+<!-- ================= EDIT DIALOG ================= -->
+<dialog id="editDlg">
+  <h3>Upraviť úlohu</h3>
+  <label for="eText">Názov</label>
+  <input type="text" id="eText">
+  <label>Stav</label>
+  <div class="seg" id="eStatus">
+    <button type="button" data-v="todo" class="todo"><i class="mark todo" style="width:14px;height:14px;border-width:2px"></i>Nezačaté</button>
+    <button type="button" data-v="doing" class="doing">◐ Rozpracované</button>
+    <button type="button" data-v="done" class="done">✓ Hotové</button>
+  </div>
+  <label>Priorita</label>
+  <div class="seg" id="ePrio">
+    <button type="button" data-v="low" class="low">▼ Nízka</button>
+    <button type="button" data-v="mid" class="mid">Stredná</button>
+    <button type="button" data-v="high" class="high">▲ Vysoká</button>
+  </div>
+  <div class="two">
+    <div><label for="eDate">Dátum</label><input type="date" id="eDate"></div>
+    <div><label for="eTime">Čas</label><input type="time" id="eTime"></div>
+  </div>
+  <label for="eNote">Poznámka</label>
+  <textarea id="eNote" placeholder="Detaily, odkazy…"></textarea>
+  <div class="row">
+    <button class="btn danger" id="eDel">Zmazať</button>
+    <button class="btn" id="eCancel">Zrušiť</button>
+    <button class="btn primary" id="eSave">Uložiť</button>
+  </div>
+</dialog>
+
+<!-- ================= SYNC DIALOG ================= -->
 <dialog id="syncDlg">
   <h3>Synchronizácia cez GitHub</h3>
   <p>Úlohy sa uložia do súkromného GitHub Gistu, takže ich uvidíš na počítači aj na mobile.
-    Vytvor si token na <a href="https://github.com/settings/tokens/new?scopes=gist&description=Kalendar%20To-Do" target="_blank" rel="noopener">github.com/settings/tokens</a>
+    Vytvor si token na <a href="https://github.com/settings/tokens/new?scopes=gist&description=Planovac" target="_blank" rel="noopener">github.com/settings/tokens</a>
     (stačí zaškrtnúť len <b>gist</b>) a vlož ho sem. Na mobile vlož ten istý token.</p>
-  <input type="password" id="tokenIn" placeholder="ghp_…" autocomplete="off">
+  <input type="password" id="tokenIn" placeholder="ghp_…" autocomplete="off" style="width:100%">
   <p id="syncInfo"></p>
   <div class="row">
-    <button class="btn" id="logout">Odpojiť</button>
+    <button class="btn danger" id="logout">Odpojiť</button>
     <button class="btn" id="closeDlg">Zavrieť</button>
     <button class="btn primary" id="saveToken">Uložiť</button>
   </div>
@@ -122,14 +338,45 @@ const store = {
   get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d }catch{ return d } },
   set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch{} }
 };
+function h(tag, props = {}, ...kids){
+  const e = document.createElement(tag);
+  for(const [k, v] of Object.entries(props)){
+    if(k === 'class') e.className = v;
+    else if(k.startsWith('on')) e[k] = v;
+    else if(v != null && v !== false) e.setAttribute(k, v);
+  }
+  for(const c of kids.flat()) if(c != null && c !== false) e.append(c);
+  return e;
+}
 
-// data: { tasks: { "YYYY-MM-DD": [{id,text,time,done}] }, updated: ms }
-let data = store.get('data', { tasks:{}, updated:0 });
-let sel = new Date(); sel.setHours(0,0,0,0);
-let view = new Date(sel.getFullYear(), sel.getMonth(), 1);
+const STATUS = { todo:'Nezačaté', doing:'Rozpracované', done:'Hotové' };
+const NEXT = { todo:'doing', doing:'done', done:'todo' };
+
+// data v2: { v:2, items:[{id,text,date,time,status,prio,note,created}], updated }
+function migrate(d){
+  if(d && Array.isArray(d.items)) return d;
+  const items = [];
+  for(const [date, arr] of Object.entries((d && d.tasks) || {}))
+    for(const t of arr) items.push({ id:t.id, text:t.text, date, time:t.time || '', status:t.done ? 'done' : 'todo', prio:'mid', note:'', created:Date.now() });
+  return { v:2, items, updated:(d && d.updated) || 0 };
+}
+let data = migrate(store.get('data', null));
 
 const key = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-const sameDay = (a,b) => key(a) === key(b);
+const parse = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d) };
+const todayKey = () => key(new Date());
+const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return key(d) };
+const isOver = it => it.date && it.date < todayKey() && it.status !== 'done';
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+function fmtDay(s, long){
+  const t = todayKey();
+  if(s === t) return 'Dnes';
+  if(s === addDays(t, 1)) return 'Zajtra';
+  if(s === addDays(t, -1)) return 'Včera';
+  return parse(s).toLocaleDateString('sk-SK', long ? { weekday:'long', day:'numeric', month:'long' } : { weekday:'short', day:'numeric', month:'numeric' });
+}
+const byTime = (a, b) => (a.time || '99').localeCompare(b.time || '99');
+const statusOrder = { doing:0, todo:1, done:2 };
 
 function save(){
   data.updated = Date.now();
@@ -137,66 +384,84 @@ function save(){
   render();
   schedulePush();
 }
+function addTask(t){
+  data.items.push({ id:uid(), status:'todo', prio:'mid', note:'', time:'', date:'', created:Date.now(), ...t });
+  save();
+}
 
-function render(){
-  $('title').textContent = view.toLocaleDateString('sk-SK', { month:'long', year:'numeric' });
+// ---------- shared task row ----------
+function taskEl(it, { showDate = true } = {}){
+  const over = isOver(it);
+  const mark = h('button', { class:'mark ' + it.status, title:STATUS[it.status] + ' – klikni pre zmenu stavu', 'aria-label':'Stav: ' + STATUS[it.status],
+    onclick:e => { e.stopPropagation(); it.status = NEXT[it.status]; save() } });
+  const meta = h('div', { class:'meta' },
+    h('span', { class:'badge ' + it.status }, STATUS[it.status]),
+    over && h('span', { class:'badge over' }, '⚠ Po termíne'),
+    it.prio === 'high' && h('span', { class:'badge p-high' }, '▲ Vysoká'),
+    it.prio === 'low' && h('span', { class:'badge p-low' }, '▼ Nízka'),
+    showDate && it.date && h('span', { class:'when' }, '📅 ' + fmtDay(it.date) + (it.time ? ' · ' + it.time : '')),
+    !showDate && it.time && h('span', { class:'when' }, '🕑 ' + it.time),
+    it.note && h('span', { class:'when', title:it.note }, '📝'));
+  return h('li', { class:'task ' + it.status + (it.prio === 'high' ? ' hi' : it.prio === 'low' ? ' lo' : ''), onclick:() => openEdit(it) },
+    mark, h('div', { class:'body' }, h('div', { class:'txt' }, it.text), meta));
+}
+
+// ---------- router ----------
+let page = 'kalendar';
+function route(){
+  page = location.hash === '#/ulohy' ? 'ulohy' : 'kalendar';
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('on', p.id === 'pg-' + page));
+  document.querySelectorAll('.tabs a').forEach(a => a.classList.toggle('on', a.dataset.page === page));
+  render();
+}
+window.addEventListener('hashchange', route);
+function render(){ page === 'ulohy' ? renderTasks() : renderCal() }
+
+// ================= KALENDÁR =================
+let sel = todayKey();
+let view = new Date(); view.setDate(1); view.setHours(0,0,0,0);
+
+function renderCal(){
+  $('monthTitle').textContent = view.toLocaleDateString('sk-SK', { month:'long', year:'numeric' });
+  const byDate = {};
+  for(const it of data.items) if(it.date) (byDate[it.date] ||= []).push(it);
   const grid = $('grid'); grid.innerHTML = '';
   const start = new Date(view); start.setDate(1 - ((view.getDay() + 6) % 7));
-  const today = new Date();
+  const t = todayKey();
   for(let i = 0; i < 42; i++){
     const d = new Date(start); d.setDate(start.getDate() + i);
-    const el = document.createElement('div');
-    el.className = 'day' + (d.getMonth() !== view.getMonth() ? ' other' : '')
-      + (sameDay(d, today) ? ' today' : '') + (sameDay(d, sel) ? ' sel' : '');
-    el.textContent = d.getDate();
-    const t = data.tasks[key(d)] || [];
-    if(t.length){
-      const dots = document.createElement('div'); dots.className = 'dots';
-      t.slice(0,3).forEach(x => { const i = document.createElement('i'); if(x.done) i.className = 'd'; dots.appendChild(i) });
-      el.appendChild(dots);
-    }
-    el.onclick = () => { sel = d; if(d.getMonth() !== view.getMonth()) view = new Date(d.getFullYear(), d.getMonth(), 1); render() };
-    grid.appendChild(el);
+    const k = key(d);
+    const items = (byDate[k] || []).slice().sort((a,b) => statusOrder[a.status] - statusOrder[b.status] || byTime(a,b));
+    const cls = it => isOver(it) ? 'over' : it.status;
+    grid.append(h('div', {
+        class:'day' + (d.getMonth() !== view.getMonth() ? ' other' : '') + (k === t ? ' today' : '') + (k === sel ? ' sel' : ''),
+        onclick:() => { sel = k; if(d.getMonth() !== view.getMonth()) view = new Date(d.getFullYear(), d.getMonth(), 1); renderCal() } },
+      h('div', { class:'n' }, String(d.getDate())),
+      items.slice(0, 3).map(it => h('div', { class:'chip ' + cls(it), title:it.text }, (it.time ? it.time + ' ' : '') + it.text)),
+      items.length > 3 && h('div', { class:'more' }, `+${items.length - 3} ďalšie`),
+      h('div', { class:'dots' }, items.slice(0, 4).map(it => h('i', { class:cls(it) })))
+    ));
   }
-  renderList();
-}
-function renderList(){
-  $('dayTitle').textContent = sameDay(sel, new Date()) ? 'Dnes' :
-    sel.toLocaleDateString('sk-SK', { weekday:'long', day:'numeric', month:'long' });
-  const items = (data.tasks[key(sel)] || []).slice()
-    .sort((a,b) => (a.done - b.done) || (a.time || '99').localeCompare(b.time || '99'));
-  const done = items.filter(x => x.done).length;
-  $('count').textContent = items.length ? `${done}/${items.length}` : '';
-  const ul = $('list'); ul.innerHTML = '';
-  if(!items.length){ ul.innerHTML = '<div class="empty">Žiadne úlohy. Pridaj prvú 👆</div>'; return }
-  for(const it of items){
-    const li = document.createElement('li'); if(it.done) li.className = 'done';
-    li.innerHTML = `<div class="chk"></div><div class="txt"></div>${it.time ? `<span class="time">${it.time}</span>` : ''}<button class="del" aria-label="Zmazať">×</button>`;
-    li.querySelector('.txt').textContent = it.text;
-    li.querySelector('.chk').onclick = () => { it.done = !it.done; save() };
-    li.querySelector('.del').onclick = () => {
-      const k = key(sel);
-      data.tasks[k] = data.tasks[k].filter(x => x.id !== it.id);
-      if(!data.tasks[k].length) delete data.tasks[k];
-      save();
-    };
-    ul.appendChild(li);
-  }
+  // day panel
+  $('dayTitle').textContent = fmtDay(sel, true);
+  const items = data.items.filter(it => it.date === sel).sort((a,b) => statusOrder[a.status] - statusOrder[b.status] || byTime(a,b));
+  const done = items.filter(x => x.status === 'done').length;
+  $('dayCount').textContent = items.length ? `${done}/${items.length} hotových` : '';
+  $('dayBar').style.width = items.length ? (done / items.length * 100) + '%' : '0';
+  const ul = $('dayList'); ul.innerHTML = '';
+  if(!items.length) ul.append(h('div', { class:'empty' }, 'Na tento deň nič nemáš.'));
+  else items.forEach(it => ul.append(taskEl(it, { showDate:false })));
 }
 
-$('addForm').onsubmit = e => {
+$('dayAdd').onsubmit = e => {
   e.preventDefault();
-  const text = $('newText').value.trim(); if(!text) return;
-  const k = key(sel);
-  (data.tasks[k] ||= []).push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), text, time: $('newTime').value, done:false });
-  $('newText').value = ''; $('newTime').value = '';
-  save();
+  const text = $('dayText').value.trim(); if(!text) return;
+  addTask({ text, date:sel, time:$('dayTime').value });
+  $('dayText').value = ''; $('dayTime').value = '';
 };
-$('prev').onclick = () => { view = new Date(view.getFullYear(), view.getMonth()-1, 1); render() };
-$('next').onclick = () => { view = new Date(view.getFullYear(), view.getMonth()+1, 1); render() };
-$('todayBtn').onclick = () => { sel = new Date(); sel.setHours(0,0,0,0); view = new Date(sel.getFullYear(), sel.getMonth(), 1); render() };
-
-// swipe between months
+$('prev').onclick = () => { view = new Date(view.getFullYear(), view.getMonth()-1, 1); renderCal() };
+$('next').onclick = () => { view = new Date(view.getFullYear(), view.getMonth()+1, 1); renderCal() };
+$('todayBtn').onclick = () => { sel = todayKey(); view = new Date(); view.setDate(1); view.setHours(0,0,0,0); renderCal() };
 let sx = null;
 $('grid').addEventListener('touchstart', e => sx = e.touches[0].clientX, { passive:true });
 $('grid').addEventListener('touchend', e => {
@@ -204,7 +469,93 @@ $('grid').addEventListener('touchend', e => {
   if(Math.abs(dx) > 50) (dx < 0 ? $('next') : $('prev')).click();
 });
 
-// ---------- GitHub Gist sync ----------
+// ================= ÚLOHY =================
+let statusFilter = 'all';   // all | todo | doing | done | over
+let scope = 'all';          // all | today | week | nodate
+const SCOPES = { all:'Všetky', today:'Dnes', week:'Tento týždeň', nodate:'Bez dátumu' };
+
+function renderTasks(){
+  const all = data.items;
+  const n = { all:all.length, todo:0, doing:0, done:0, over:0 };
+  for(const it of all){ n[it.status]++; if(isOver(it)) n.over++ }
+
+  const stats = $('stats'); stats.innerHTML = '';
+  [['all','Spolu',null],['todo','Nezačaté','todo'],['doing','Rozpracované','doing'],['done','Hotové','done'],['over','Po termíne','over']]
+    .forEach(([k, label, dot]) => stats.append(h('div', { class:'stat card' + (statusFilter === k ? ' on' : ''),
+      onclick:() => { statusFilter = statusFilter === k ? 'all' : k; renderTasks() } },
+      h('b', {}, String(n[k])), h('span', {}, dot && h('i', { class:dot }), label))));
+
+  const pct = n.all ? Math.round(n.done / n.all * 100) : 0;
+  $('progressTxt').textContent = `${pct} % hotové`;
+  const bar = $('bar'); bar.innerHTML = '';
+  if(n.all) [['done','var(--done)'],['doing','var(--doing)']].forEach(([k, c]) =>
+    bar.append(h('div', { style:`width:${n[k] / n.all * 100}%;background:${c}` })));
+
+  const chips = $('scopeChips'); chips.innerHTML = '';
+  for(const [k, label] of Object.entries(SCOPES))
+    chips.append(h('button', { class:scope === k ? 'on' : '', onclick:() => { scope = k; renderTasks() } }, label));
+
+  const t = todayKey(), weekEnd = addDays(t, 6);
+  const q = $('search').value.trim().toLowerCase();
+  const list = all.filter(it =>
+    (statusFilter === 'all' || (statusFilter === 'over' ? isOver(it) : it.status === statusFilter)) &&
+    (scope === 'all' || (scope === 'today' && it.date === t) || (scope === 'week' && it.date >= t && it.date <= weekEnd) || (scope === 'nodate' && !it.date)) &&
+    (!q || (it.text + ' ' + (it.note || '')).toLowerCase().includes(q)));
+
+  // groups: overdue, then by date, then no date
+  const groups = new Map();
+  const push = (k, it) => { if(!groups.has(k)) groups.set(k, []); groups.get(k).push(it) };
+  list.slice().sort((a,b) => (a.date || '9999').localeCompare(b.date || '9999') || byTime(a,b))
+    .forEach(it => push(isOver(it) ? '!over' : it.date || '~nodate', it));
+  const order = [...groups.keys()].sort((a,b) => a === '!over' ? -1 : b === '!over' ? 1 : a.localeCompare(b));
+
+  const wrap = $('groups'); wrap.innerHTML = '';
+  if(!list.length){ wrap.append(h('div', { class:'empty' }, all.length ? 'Nič nezodpovedá filtru.' : 'Zatiaľ žiadne úlohy. Pridaj prvú hore 👆')); return }
+  for(const k of order){
+    const items = groups.get(k).sort((a,b) => statusOrder[a.status] - statusOrder[b.status] || byTime(a,b));
+    const done = items.filter(x => x.status === 'done').length;
+    const title = k === '!over' ? '⚠ Po termíne' : k === '~nodate' ? 'Bez dátumu' : fmtDay(k, true);
+    wrap.append(h('div', { class:'group' },
+      h('h3', { class:k === '!over' ? 'over' : '' }, title, h('small', {}, `${done}/${items.length}`)),
+      h('ul', { class:'tasks' }, items.map(it => taskEl(it, { showDate:k === '!over' })))));
+  }
+}
+
+$('taskAdd').onsubmit = e => {
+  e.preventDefault();
+  const text = $('tText').value.trim(); if(!text) return;
+  addTask({ text, date:$('tDate').value, time:$('tTime').value, prio:$('tPrio').value });
+  $('tText').value = ''; $('tTime').value = ''; $('tPrio').value = 'mid';
+};
+$('search').oninput = renderTasks;
+
+// ================= EDIT =================
+let editing = null;
+const seg = (id, v) => $(id).querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+['eStatus', 'ePrio'].forEach(id => $(id).onclick = e => { const b = e.target.closest('button'); if(b) seg(id, b.dataset.v) });
+const segVal = id => $(id).querySelector('button.on')?.dataset.v;
+
+function openEdit(it){
+  editing = it;
+  $('eText').value = it.text; $('eDate').value = it.date || ''; $('eTime').value = it.time || ''; $('eNote').value = it.note || '';
+  seg('eStatus', it.status); seg('ePrio', it.prio || 'mid');
+  $('editDlg').showModal();
+}
+$('eSave').onclick = () => {
+  if(!editing) return;
+  const text = $('eText').value.trim(); if(!text) return $('eText').focus();
+  Object.assign(editing, { text, date:$('eDate').value, time:$('eTime').value, note:$('eNote').value.trim(),
+    status:segVal('eStatus') || 'todo', prio:segVal('ePrio') || 'mid' });
+  $('editDlg').close(); save();
+};
+$('eDel').onclick = () => {
+  if(!editing || !confirm('Zmazať úlohu „' + editing.text + '“?')) return;
+  data.items = data.items.filter(x => x !== editing);
+  $('editDlg').close(); save();
+};
+$('eCancel').onclick = () => $('editDlg').close();
+
+// ================= GitHub Gist sync =================
 let token = store.get('token', '');
 let gistId = store.get('gistId', '');
 let pushTimer = null;
@@ -212,23 +563,21 @@ const setDot = s => $('dot').className = 'sync-dot ' + (s || '');
 
 async function gh(path, opts = {}){
   const r = await fetch('https://api.github.com' + path, { ...opts, headers:{
-    'Authorization': 'Bearer ' + token, 'Accept': 'application/vnd.github+json', ...(opts.body ? {'Content-Type':'application/json'} : {}) } });
-  if(!r.ok) throw new Error(r.status + ' ' + (await r.text()).slice(0,120));
+    'Authorization':'Bearer ' + token, 'Accept':'application/vnd.github+json', ...(opts.body ? { 'Content-Type':'application/json' } : {}) } });
+  if(!r.ok) throw new Error(r.status + ' ' + (await r.text()).slice(0, 120));
   return r.json();
 }
-
 async function findGist(){
-  for(let page = 1; page <= 5; page++){
-    const list = await gh(`/gists?per_page=100&page=${page}`);
+  for(let p = 1; p <= 5; p++){
+    const list = await gh(`/gists?per_page=100&page=${p}`);
     const g = list.find(g => g.files && g.files[FILE]);
     if(g) return g.id;
     if(list.length < 100) break;
   }
-  const g = await gh('/gists', { method:'POST', body: JSON.stringify({
-    description:'Kalendár To-Do (dáta)', public:false, files:{ [FILE]: { content: JSON.stringify(data) } } }) });
+  const g = await gh('/gists', { method:'POST', body:JSON.stringify({
+    description:'Plánovač (dáta)', public:false, files:{ [FILE]:{ content:JSON.stringify(data) } } }) });
   return g.id;
 }
-
 async function pull(){
   if(!token) return setDot('');
   setDot('busy');
@@ -238,18 +587,17 @@ async function pull(){
     const f = g.files[FILE];
     let content = f.content;
     if(f.truncated) content = await (await fetch(f.raw_url)).text();
-    const remote = JSON.parse(content || '{}');
+    const remote = migrate(JSON.parse(content || '{}'));
     if((remote.updated || 0) > (data.updated || 0)){ data = remote; store.set('data', data); render() }
     else if((remote.updated || 0) < (data.updated || 0)) await push();
     setDot('ok');
   }catch(err){ console.error(err); setDot('err'); $('syncInfo').textContent = 'Chyba: ' + err.message }
 }
-
 async function push(){
   if(!token || !gistId) return;
   setDot('busy');
   try{
-    await gh('/gists/' + gistId, { method:'PATCH', body: JSON.stringify({ files:{ [FILE]: { content: JSON.stringify(data) } } }) });
+    await gh('/gists/' + gistId, { method:'PATCH', body:JSON.stringify({ files:{ [FILE]:{ content:JSON.stringify(data) } } }) });
     setDot('ok');
   }catch(err){ console.error(err); setDot('err') }
 }
@@ -266,18 +614,16 @@ $('saveToken').onclick = async () => {
   gistId = ''; store.set('gistId', '');
   $('syncInfo').textContent = 'Pripájam…';
   await pull();
-  if(gistId) { $('syncInfo').textContent = '✅ Pripojené!'; setTimeout(() => $('syncDlg').close(), 700) }
+  if(gistId){ $('syncInfo').textContent = '✅ Pripojené!'; setTimeout(() => $('syncDlg').close(), 700) }
 };
 $('logout').onclick = () => {
   token = ''; gistId = ''; store.set('token', ''); store.set('gistId', '');
   setDot(''); $('tokenIn').value = ''; $('syncInfo').textContent = 'Odpojené. Dáta ostali v tomto zariadení.';
 };
-
-// refresh from GitHub when app comes back to foreground
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible') pull() });
 
-if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
-render();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+route();
 pull();
 </script>
 </body>
