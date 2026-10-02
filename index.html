@@ -187,6 +187,15 @@ form.quick input[type=time]{width:100px;padding:0 6px}
   .top-in .brand span{display:none}
 }
 
+/* ---------- european date / time fields ---------- */
+.datef{position:relative;display:flex;min-width:0}
+.datef input.dtext{flex:1;width:100%;padding-right:42px}
+.datef .pick{position:absolute;right:4px;top:4px;height:36px;width:36px;border:0;background:none;cursor:pointer;font-size:17px;border-radius:9px}
+.datef .pick:hover{background:var(--hover)}
+.datef input.dnative{position:absolute;right:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;border:0;padding:0}
+input.bad{border-color:var(--over)!important;background:var(--over-soft)}
+input.ttext{width:90px;text-align:center}
+
 /* ---------- dialog ---------- */
 dialog{border:0;border-radius:20px;background:var(--card);color:var(--text);width:min(94vw,480px);padding:20px}
 dialog::backdrop{background:rgba(0,0,0,.45)}
@@ -248,10 +257,19 @@ dialog .row .danger{margin-right:auto}
         <div class="mini-progress"><div id="dayBar"></div></div>
         <form class="quick" id="dayAdd">
           <input type="text" id="dayText" placeholder="Pridať úlohu na tento deň…" autocomplete="off" enterkeyhint="done">
-          <input type="time" id="dayTime">
+          <input type="text" class="ttext" id="dayTime" placeholder="hh:mm" inputmode="numeric" title="Čas (nepovinné)">
           <button class="btn primary" type="submit" aria-label="Pridať">+</button>
         </form>
         <ul class="tasks" id="dayList"></ul>
+
+        <div class="nodate-in" style="margin-top:24px;padding-top:16px;border-top:1px solid var(--line)">
+          <div class="panel-head"><h2 style="text-transform:none">📝 To-do bez dátumu</h2><span id="ndCount"></span></div>
+          <form class="quick" id="ndAdd">
+            <input type="text" id="ndText" placeholder="Úloha bez dátumu…" autocomplete="off" enterkeyhint="done">
+            <button class="btn primary" type="submit" aria-label="Pridať">+</button>
+          </form>
+          <ul class="tasks" id="ndList"></ul>
+        </div>
       </aside>
     </div>
   </section>
@@ -266,9 +284,9 @@ dialog .row .danger{margin-right:auto}
     </div>
 
     <form class="add-big card" id="taskAdd">
-      <input type="text" id="tText" placeholder="Čo treba urobiť?" autocomplete="off" enterkeyhint="done">
-      <input type="date" id="tDate" title="Dátum (nepovinné)">
-      <input type="time" id="tTime" title="Čas (nepovinné)">
+      <input type="text" id="tText" placeholder="Čo treba urobiť? (dátum nie je povinný)" autocomplete="off" enterkeyhint="done">
+      <div class="datef" id="tDate" title="Dátum – nechaj prázdne pre úlohu bez dátumu"></div>
+      <input type="text" class="ttext" id="tTime" placeholder="hh:mm" inputmode="numeric" title="Čas (nepovinné)">
       <select id="tPrio" title="Priorita">
         <option value="mid">Stredná priorita</option>
         <option value="high">▲ Vysoká</option>
@@ -304,8 +322,8 @@ dialog .row .danger{margin-right:auto}
     <button type="button" data-v="high" class="high">▲ Vysoká</button>
   </div>
   <div class="two">
-    <div><label for="eDate">Dátum</label><input type="date" id="eDate"></div>
-    <div><label for="eTime">Čas</label><input type="time" id="eTime"></div>
+    <div><label>Dátum <small>(prázdne = bez dátumu)</small></label><div class="datef" id="eDate"></div></div>
+    <div><label for="eTime">Čas</label><input type="text" class="ttext" id="eTime" placeholder="hh:mm" inputmode="numeric" style="width:100%"></div>
   </div>
   <label for="eNote">Poznámka</label>
   <textarea id="eNote" placeholder="Detaily, odkazy…"></textarea>
@@ -377,6 +395,40 @@ function fmtDay(s, long){
 }
 const byTime = (a, b) => (a.time || '99').localeCompare(b.time || '99');
 const statusOrder = { doing:0, todo:1, done:2 };
+
+// ---------- European date (dd.mm.rrrr) & 24h time fields ----------
+const euro = iso => { if(!iso) return ''; const [y,m,d] = iso.split('-'); return `${d}.${m}.${y}` };
+function parseEuro(s){
+  s = s.trim(); if(!s) return '';
+  const m = s.match(/^(\d{1,2})[.\/\-\s]+(\d{1,2})[.\/\-\s]*(\d{2,4})?\.?$/); if(!m) return null;
+  let [, d, mo, y] = m; y = y ? (y.length === 2 ? 2000 + +y : +y) : new Date().getFullYear();
+  const dt = new Date(y, mo-1, d);
+  return dt.getDate() == d && dt.getMonth() == mo-1 ? key(dt) : null;
+}
+function parseTime(s){
+  s = s.trim(); if(!s) return '';
+  const m = s.match(/^(\d{1,2})(?:[:.h ]?(\d{2}))?$/); if(!m) return null;
+  const hh = +m[1], mm = +(m[2] || 0);
+  return hh < 24 && mm < 60 ? `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}` : null;
+}
+function dateField(id){
+  const text = h('input', { type:'text', class:'dtext', placeholder:'dd.mm.rrrr', inputmode:'decimal', autocomplete:'off' });
+  const native = h('input', { type:'date', class:'dnative', tabindex:'-1', 'aria-hidden':'true' });
+  const pick = h('button', { type:'button', class:'pick', title:'Vybrať z kalendára', onclick:() => {
+    native.value = parseEuro(text.value) || '';
+    try{ native.showPicker() }catch{ native.focus(); native.click() } } }, '📅');
+  native.onchange = () => { text.value = euro(native.value); text.classList.remove('bad') };
+  text.oninput = () => text.classList.remove('bad');
+  text.onblur = () => { const v = parseEuro(text.value); if(v) text.value = euro(v); else if(v === null) text.classList.add('bad') };
+  $(id).append(text, pick, native);
+  return {
+    get(){ const v = parseEuro(text.value); text.classList.toggle('bad', v === null); return v },
+    set(iso){ text.value = euro(iso); text.classList.remove('bad') }
+  };
+}
+function readTime(el){ const v = parseTime(el.value); el.classList.toggle('bad', v === null); if(v) el.value = v; return v }
+const tDate = dateField('tDate'), eDate = dateField('eDate');
+['tTime', 'dayTime', 'eTime'].forEach(id => { $(id).onblur = () => readTime($(id)); $(id).oninput = () => $(id).classList.remove('bad') });
 
 function save(){
   data.updated = Date.now();
@@ -451,12 +503,27 @@ function renderCal(){
   const ul = $('dayList'); ul.innerHTML = '';
   if(!items.length) ul.append(h('div', { class:'empty' }, 'Na tento deň nič nemáš.'));
   else items.forEach(it => ul.append(taskEl(it, { showDate:false })));
+
+  // undated to-dos
+  const nd = data.items.filter(it => !it.date).sort((a,b) => statusOrder[a.status] - statusOrder[b.status]);
+  const ndDone = nd.filter(x => x.status === 'done').length;
+  $('ndCount').textContent = nd.length ? `${ndDone}/${nd.length} hotových` : '';
+  const ndl = $('ndList'); ndl.innerHTML = '';
+  if(!nd.length) ndl.append(h('div', { class:'empty' }, 'Sem daj veci, ktoré nemajú konkrétny deň.'));
+  else nd.forEach(it => ndl.append(taskEl(it, { showDate:false })));
 }
+$('ndAdd').onsubmit = e => {
+  e.preventDefault();
+  const text = $('ndText').value.trim(); if(!text) return;
+  addTask({ text, date:'' });
+  $('ndText').value = '';
+};
 
 $('dayAdd').onsubmit = e => {
   e.preventDefault();
   const text = $('dayText').value.trim(); if(!text) return;
-  addTask({ text, date:sel, time:$('dayTime').value });
+  const time = readTime($('dayTime')); if(time === null) return $('dayTime').focus();
+  addTask({ text, date:sel, time });
   $('dayText').value = ''; $('dayTime').value = '';
 };
 $('prev').onclick = () => { view = new Date(view.getFullYear(), view.getMonth()-1, 1); renderCal() };
@@ -524,8 +591,10 @@ function renderTasks(){
 $('taskAdd').onsubmit = e => {
   e.preventDefault();
   const text = $('tText').value.trim(); if(!text) return;
-  addTask({ text, date:$('tDate').value, time:$('tTime').value, prio:$('tPrio').value });
-  $('tText').value = ''; $('tTime').value = ''; $('tPrio').value = 'mid';
+  const date = tDate.get(), time = readTime($('tTime'));
+  if(date === null || time === null) return;
+  addTask({ text, date, time, prio:$('tPrio').value });
+  $('tText').value = ''; $('tTime').value = ''; $('tPrio').value = 'mid'; tDate.set('');
 };
 $('search').oninput = renderTasks;
 
@@ -537,14 +606,16 @@ const segVal = id => $(id).querySelector('button.on')?.dataset.v;
 
 function openEdit(it){
   editing = it;
-  $('eText').value = it.text; $('eDate').value = it.date || ''; $('eTime').value = it.time || ''; $('eNote').value = it.note || '';
+  $('eText').value = it.text; eDate.set(it.date || ''); $('eTime').value = it.time || ''; $('eTime').classList.remove('bad'); $('eNote').value = it.note || '';
   seg('eStatus', it.status); seg('ePrio', it.prio || 'mid');
   $('editDlg').showModal();
 }
 $('eSave').onclick = () => {
   if(!editing) return;
   const text = $('eText').value.trim(); if(!text) return $('eText').focus();
-  Object.assign(editing, { text, date:$('eDate').value, time:$('eTime').value, note:$('eNote').value.trim(),
+  const date = eDate.get(), time = readTime($('eTime'));
+  if(date === null || time === null) return;
+  Object.assign(editing, { text, date, time, note:$('eNote').value.trim(),
     status:segVal('eStatus') || 'todo', prio:segVal('ePrio') || 'mid' });
   $('editDlg').close(); save();
 };
