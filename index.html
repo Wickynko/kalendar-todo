@@ -181,6 +181,7 @@ form.quick input[type=time]{width:100px;padding:0 6px}
 .group h3.over{color:var(--over)}
 .group h3.low{color:var(--low)}
 .group h3.donegrp{color:var(--done)}
+.group h3.doinggrp{color:var(--doing)}
 .group h3 small{font-weight:500;text-transform:none;letter-spacing:0}
 
 @media (max-width:900px){
@@ -635,7 +636,7 @@ $('grid').addEventListener('touchend', e => {
 let statusFilter = 'all';   // all | todo | doing | done | over
 let scope = 'all';          // all | today | week | nodate
 const SCOPES = { all:'Všetky', today:'Dnes', week:'Tento týždeň', nodate:'Bez dátumu' };
-const SORTS = { prio:'⇅ Podľa dôležitosti', date:'⇅ Podľa dátumu' };
+const SORTS = { prio:'⇅ Podľa dôležitosti', status:'⇅ Podľa stavu', date:'⇅ Podľa dátumu' };
 let sortMode = store.get('sortMode', 'prio');
 
 function renderTasks(){
@@ -688,6 +689,12 @@ function renderTasks(){
     const PG = { high:['▲ Vysoká priorita', 'over'], mid:['● Stredná priorita', ''], low:['▼ Nízka priorita', 'low'], done:['✓ Hotové', 'donegrp'] };
     for(const k of ['high', 'mid', 'low', 'done'])
       if(groups.has(k)) draw(k, PG[k][0], PG[k][1], groups.get(k).sort(byDate), true);
+  } else if(sortMode === 'status'){
+    // groups by progress: in progress → not started → done; inside by importance
+    list.forEach(it => push(it.status, it));
+    const SG = { doing:['◐ Rozpracované', 'doinggrp'], todo:['○ Nezačaté', ''], done:['✓ Hotové', 'donegrp'] };
+    for(const k of ['doing', 'todo', 'done'])
+      if(groups.has(k)) draw(k, SG[k][0], SG[k][1], groups.get(k).sort(byImportance), true);
   } else {
     // groups: overdue, then by date, then no date; inside by importance
     list.forEach(it => push(isOver(it) ? '!over' : it.date || '~nodate', it));
