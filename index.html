@@ -101,6 +101,31 @@ li.task input.inline{width:100%;height:34px;font-weight:500;padding:0 8px;margin
 .edit-btn:active{transform:scale(.92)}
 li.task.done .txt{text-decoration:line-through;color:var(--muted)}
 li.task .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px;align-items:center}
+/* sub-points (body) */
+.subs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.sub{border:1px solid var(--line);background:var(--bg);color:var(--text);border-radius:8px;font-size:12.5px;line-height:1.2;
+  padding:4px 9px 4px 6px;display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+.sub .box{flex:none;width:15px;height:15px;border-radius:4px;border:1.5px solid var(--todo);display:grid;place-items:center}
+.sub.on{background:var(--done-soft);border-color:transparent;color:var(--done);text-decoration:line-through}
+.sub.on .box{background:var(--done);border-color:var(--done)}
+.sub.on .box::after,.sublist .box.on::after{content:"";width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg) translate(-.5px,-1px)}
+.badge.subcount{background:var(--accent-soft);color:var(--accent)}
+.badge.subcount.full{background:var(--done-soft);color:var(--done)}
+.sublist{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:6px}
+.sublist li{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:10px;background:var(--bg)}
+.sublist .box{flex:none;width:22px;height:22px;border-radius:6px;border:2px solid var(--todo);display:grid;place-items:center;cursor:pointer;background:none;padding:0}
+.sublist .box.on{background:var(--done);border-color:var(--done)}
+.sublist .box.on::after{width:5px;height:10px}
+.sublist span{flex:1;min-width:0;word-break:break-word}
+.sublist span.on{text-decoration:line-through;color:var(--muted)}
+.sublist .x{border:0;background:none;color:var(--muted);font-size:20px;cursor:pointer;padding:0 4px}
+.subadd{display:flex;gap:8px}
+.subadd input{flex:1}
+.presets{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.presets button{border:1px dashed var(--line);background:none;border-radius:99px;height:32px;padding:0 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.presets button:hover{border-color:var(--accent);color:var(--accent)}
+.webtoggle{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);cursor:pointer;user-select:none;white-space:nowrap}
+.webtoggle input{width:18px;height:18px;margin:0;accent-color:var(--accent)}
 li.task .when{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .empty{color:var(--muted);text-align:center;padding:28px 0}
 
@@ -170,7 +195,7 @@ form.quick input[type=time]{width:100px;padding:0 6px}
 .progress .row b{color:var(--text)}
 .bar{height:10px;border-radius:99px;background:var(--line);overflow:hidden;display:flex}
 .bar div{height:100%;transition:width .3s}
-.add-big{padding:14px;display:grid;grid-template-columns:1fr auto auto auto auto;gap:8px;margin-bottom:16px}
+.add-big{padding:14px;display:grid;grid-template-columns:1fr auto auto auto auto auto;gap:8px;margin-bottom:16px}
 .add-big input[type=date]{width:150px}.add-big input[type=time]{width:105px}
 .toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
 .toolbar input[type=search]{flex:1;min-width:180px}
@@ -183,11 +208,17 @@ form.quick input[type=time]{width:100px;padding:0 6px}
 .group h3.donegrp{color:var(--done)}
 .group h3.doinggrp{color:var(--doing)}
 .group h3 small{font-weight:500;text-transform:none;letter-spacing:0}
+.gstate{margin-left:auto;display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:99px;
+  font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;background:var(--todo-soft);color:var(--todo)}
+.gstate.ok{background:var(--done-soft);color:var(--done)}
+.gstate .mark{width:14px;height:14px;border-width:2px;pointer-events:none}
+.gstate .mark.done::after{width:3px;height:6px;border-width:0 1.5px 1.5px 0}
 
 @media (max-width:900px){
   .stats{grid-template-columns:repeat(3,1fr)}
   .add-big{grid-template-columns:1fr 1fr}
   .add-big #tText{grid-column:1/-1}
+  .add-big button[type=submit]{grid-column:1/-1}
   .add-big input[type=date],.add-big input[type=time]{width:100%}
 }
 @media (max-width:520px){
@@ -337,6 +368,7 @@ dialog p.hint{font-size:13px;margin-top:10px}
         <option value="high">▲ Vysoká</option>
         <option value="low">▼ Nízka</option>
       </select>
+      <label class="webtoggle" title="Pridá body: Hotový web, Telefónny web, Rezervačný systém"><input type="checkbox" id="tWeb">🌐 Web projekt</label>
       <button class="btn primary" type="submit">Pridať</button>
     </form>
 
@@ -371,6 +403,13 @@ dialog p.hint{font-size:13px;margin-top:10px}
     <div><label>Dátum <small>(prázdne = bez dátumu)</small></label><div class="datef" id="eDate"></div></div>
     <div><label for="eTime">Čas</label><input type="text" class="ttext" id="eTime" placeholder="hh:mm" inputmode="numeric" style="width:100%"></div>
   </div>
+  <label>Body <small id="eSubCount"></small></label>
+  <ul class="sublist" id="eSubs"></ul>
+  <div class="subadd">
+    <input type="text" id="eSubText" placeholder="Pridať bod…" autocomplete="off" enterkeyhint="done">
+    <button class="btn" type="button" id="eSubAdd">+</button>
+  </div>
+  <div class="presets" id="ePresets"></div>
   <label for="eNote">Poznámka</label>
   <textarea id="eNote" placeholder="Detaily, odkazy…"></textarea>
   <div class="row">
@@ -510,6 +549,15 @@ function save(){
   render();
   schedulePush();
 }
+// sub-points ("body"): web project presets
+const WEB_SUBS = ['Hotový web', 'Telefónny web', 'Rezervačný systém'];
+const mkSubs = list => list.map(text => ({ id:uid(), text, done:false }));
+// status follows the sub-points: all done → Hotové, some done → Rozpracované
+function statusFromSubs(subs, current){
+  if(!subs || !subs.length) return current;
+  const d = subs.filter(x => x.done).length;
+  return d === subs.length ? 'done' : d > 0 ? 'doing' : current === 'done' ? 'todo' : current;
+}
 function addTask(t){
   data.items.push({ id:uid(), status:'todo', prio:'mid', note:'', time:'', date:'', created:Date.now(), ...t });
   save();
@@ -527,13 +575,19 @@ function taskEl(it, { showDate = true } = {}){
     it.prio === 'low' && h('span', { class:'badge p-low' }, '▼ Nízka'),
     showDate && it.date && h('span', { class:'when' }, '📅 ' + fmtDay(it.date) + (it.time ? ' · ' + it.time : '')),
     !showDate && it.time && h('span', { class:'when' }, '🕑 ' + it.time),
+    it.subs && it.subs.length && h('span', { class:'badge subcount' + (it.subs.every(x => x.done) ? ' full' : '') },
+      `☑ ${it.subs.filter(x => x.done).length}/${it.subs.length}`),
     it.note && h('span', { class:'when', title:it.note }, '📝'));
+  const subs = it.subs && it.subs.length && h('div', { class:'subs' }, it.subs.map(sb =>
+    h('button', { class:'sub' + (sb.done ? ' on' : ''), type:'button', title:'Klikni pre odškrtnutie',
+      onclick:e => { e.stopPropagation(); sb.done = !sb.done; it.status = statusFromSubs(it.subs, it.status); save() } },
+      h('span', { class:'box' }), sb.text)));
   const txt = h('div', { class:'txt', title:'Klikni a uprav text', onclick:e => { e.stopPropagation(); inlineEdit(txt, it) } }, it.text);
   const edit = h('button', { class:'edit-btn', title:'Upraviť detaily (dátum, stav, priorita, poznámka)', 'aria-label':'Upraviť',
     onclick:e => { e.stopPropagation(); openEdit(it) } });
   edit.innerHTML = PEN;
   return h('li', { class:'task ' + it.status + (it.prio === 'high' ? ' hi' : it.prio === 'low' ? ' lo' : ''), onclick:() => openEdit(it) },
-    mark, h('div', { class:'body' }, txt, meta), edit);
+    mark, h('div', { class:'body' }, txt, meta, subs), edit);
 }
 
 const PEN = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>';
@@ -678,7 +732,10 @@ function renderTasks(){
   const draw = (k, title, cls, items, showDate) => {
     const done = items.filter(x => x.status === 'done').length;
     wrap.append(h('div', { class:'group' },
-      h('h3', { class:cls }, title, h('small', {}, `${done}/${items.length}`)),
+      h('h3', { class:cls }, title, h('small', {}, `${done}/${items.length}`),
+        done === items.length
+          ? h('span', { class:'gstate ok' }, h('i', { class:'mark done' }), 'Všetko hotové')
+          : h('span', { class:'gstate' }, h('i', { class:'mark' }), `${items.length - done} nehotové`)),
       h('ul', { class:'tasks' }, items.map(it => taskEl(it, { showDate })))));
   };
 
@@ -710,8 +767,8 @@ $('taskAdd').onsubmit = e => {
   const text = $('tText').value.trim(); if(!text) return;
   const date = tDate.get(), time = readTime($('tTime'));
   if(date === null || time === null) return;
-  addTask({ text, date, time, prio:$('tPrio').value });
-  $('tText').value = ''; $('tTime').value = ''; $('tPrio').value = 'mid'; tDate.set('');
+  addTask({ text, date, time, prio:$('tPrio').value, subs:$('tWeb').checked ? mkSubs(WEB_SUBS) : [] });
+  $('tText').value = ''; $('tTime').value = ''; $('tPrio').value = 'mid'; $('tWeb').checked = false; tDate.set('');
 };
 $('search').oninput = renderTasks;
 
@@ -721,10 +778,37 @@ const seg = (id, v) => $(id).querySelectorAll('button').forEach(b => b.classList
 ['eStatus', 'ePrio'].forEach(id => $(id).onclick = e => { const b = e.target.closest('button'); if(b) seg(id, b.dataset.v) });
 const segVal = id => $(id).querySelector('button.on')?.dataset.v;
 
+let editSubs = [];
+function renderEditSubs(){
+  const ul = $('eSubs'); ul.innerHTML = '';
+  editSubs.forEach(sb => ul.append(h('li', {},
+    h('button', { type:'button', class:'box' + (sb.done ? ' on' : ''), 'aria-label':'Hotové',
+      onclick:() => { sb.done = !sb.done; seg('eStatus', statusFromSubs(editSubs, segVal('eStatus'))); renderEditSubs() } }),
+    h('span', { class:sb.done ? 'on' : '' }, sb.text),
+    h('button', { type:'button', class:'x', title:'Odstrániť bod', onclick:() => { editSubs = editSubs.filter(x => x !== sb); renderEditSubs() } }, '×'))));
+  const d = editSubs.filter(x => x.done).length;
+  $('eSubCount').textContent = editSubs.length ? `(${d}/${editSubs.length} hotových)` : '';
+  // presets: offer only the ones not already there
+  const have = new Set(editSubs.map(x => x.text.toLowerCase()));
+  const missing = WEB_SUBS.filter(t => !have.has(t.toLowerCase()));
+  const pr = $('ePresets'); pr.innerHTML = '';
+  if(missing.length > 1) pr.append(h('button', { type:'button', onclick:() => { editSubs.push(...mkSubs(missing)); renderEditSubs() } }, '+ 🌐 Všetky body webu'));
+  missing.forEach(t => pr.append(h('button', { type:'button', onclick:() => { editSubs.push(...mkSubs([t])); renderEditSubs() } }, '+ ' + t)));
+}
+function addEditSub(){
+  const t = $('eSubText').value.trim(); if(!t) return;
+  editSubs.push(...mkSubs([t])); $('eSubText').value = ''; renderEditSubs(); $('eSubText').focus();
+}
+$('eSubAdd').onclick = addEditSub;
+$('eSubText').onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); addEditSub() } };
+
 function openEdit(it){
   editing = it;
+  editSubs = (it.subs || []).map(x => ({ ...x }));
+  $('eSubText').value = '';
   $('eText').value = it.text; eDate.set(it.date || ''); $('eTime').value = it.time || ''; $('eTime').classList.remove('bad'); $('eNote').value = it.note || '';
   seg('eStatus', it.status); seg('ePrio', it.prio || 'mid');
+  renderEditSubs();
   $('editDlg').showModal();
 }
 $('eSave').onclick = () => {
@@ -733,7 +817,7 @@ $('eSave').onclick = () => {
   const date = eDate.get(), time = readTime($('eTime'));
   if(date === null || time === null) return;
   Object.assign(editing, { text, date, time, note:$('eNote').value.trim(),
-    status:segVal('eStatus') || 'todo', prio:segVal('ePrio') || 'mid' });
+    status:segVal('eStatus') || 'todo', prio:segVal('ePrio') || 'mid', subs:editSubs });
   $('editDlg').close(); save();
 };
 $('eDel').onclick = () => {
@@ -764,7 +848,8 @@ function buildICS(){
     if(it.time) L.push('DTSTART:' + d + 'T' + it.time.replace(':', '') + '00', 'DURATION:PT30M');
     else L.push('DTSTART;VALUE=DATE:' + d, 'DTEND;VALUE=DATE:' + addDays(it.date, 1).replace(/-/g, ''));
     L.push('SUMMARY:' + icsEsc(mark + it.text),
-      'DESCRIPTION:' + icsEsc(['Stav: ' + STATUS[it.status], it.prio === 'high' ? 'Priorita: vysoká' : it.prio === 'low' ? 'Priorita: nízka' : '', it.note || ''].filter(Boolean).join('\n')),
+      'DESCRIPTION:' + icsEsc(['Stav: ' + STATUS[it.status], it.prio === 'high' ? 'Priorita: vysoká' : it.prio === 'low' ? 'Priorita: nízka' : '',
+        ...(it.subs || []).map(x => (x.done ? '☑ ' : '☐ ') + x.text), it.note || ''].filter(Boolean).join('\n')),
       'TRANSP:TRANSPARENT', 'END:VEVENT');
   }
   L.push('END:VCALENDAR');
