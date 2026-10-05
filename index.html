@@ -487,7 +487,7 @@ function h(tag, props = {}, ...kids){
     else if(k.startsWith('on')) e[k] = v;
     else if(v != null && v !== false) e.setAttribute(k, v);
   }
-  for(const c of kids.flat()) if(c != null && c !== false) e.append(c);
+  for(const c of kids.flat()) if(c != null && c !== false && c !== 0 && c !== '') e.append(c);
   return e;
 }
 
@@ -592,10 +592,10 @@ function taskEl(it, { showDate = true } = {}){
     showDate && it.date && h('span', { class:'when' }, '📅 ' + fmtDay(it.date) + (it.time ? ' · ' + it.time : '')),
     !showDate && it.time && h('span', { class:'when' }, '🕑 ' + it.time),
     missing(it, 'Telefónny web') && h('span', { class:'badge miss', title:'Telefónny web ešte nie je hotový' }, '📱 chýba mobil'),
-    it.subs && it.subs.length && h('span', { class:'badge subcount' + (it.subs.every(x => x.done) ? ' full' : '') },
+    it.subs?.length > 0 && h('span', { class:'badge subcount' + (it.subs.every(x => x.done) ? ' full' : '') },
       `☑ ${it.subs.filter(x => x.done).length}/${it.subs.length}`),
     it.note && h('span', { class:'when', title:it.note }, '📝'));
-  const subs = it.subs && it.subs.length && h('div', { class:'subs' }, it.subs.map(sb =>
+  const subs = it.subs?.length > 0 && h('div', { class:'subs' }, it.subs.map(sb =>
     h('button', { class:'sub' + (sb.done ? ' on' : ''), type:'button', title:'Klikni pre odškrtnutie',
       onclick:e => { e.stopPropagation(); sb.done = !sb.done; it.status = statusFromSubs(it.subs, it.status); save() } },
       h('span', { class:'box' }), sb.text)));
