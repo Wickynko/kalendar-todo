@@ -187,6 +187,21 @@ form.quick input[type=time]{width:100px;padding:0 6px}
 .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
 .stat{padding:14px 16px;cursor:pointer;border:2px solid transparent}
 .stat.on{border-color:var(--accent)}
+/* web projects: what's still missing */
+.webmiss{padding:14px 16px;margin-bottom:16px}
+.webmiss h4{margin:0 0 10px;font-size:15px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.webmiss h4 small{font-weight:500;color:var(--muted);font-size:12.5px}
+.wm-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.wm{border:2px solid var(--line);background:var(--bg);border-radius:14px;padding:10px 12px;text-align:left;cursor:pointer}
+.wm .ic{font-size:18px}
+.wm b{display:block;font-size:24px;line-height:1.15;margin-top:2px}
+.wm span{display:block;font-size:12.5px;color:var(--muted);line-height:1.25}
+.wm.has b{color:var(--over)}
+.wm.zero b{color:var(--done)}
+.wm.on{border-color:var(--accent);background:var(--accent-soft)}
+.wm-names{margin-top:10px;font-size:13px;color:var(--muted);line-height:1.5}
+.wm-names b{color:var(--text);font-weight:600}
+.badge.miss{background:var(--over-soft);color:var(--over)}
 .stat b{display:block;font-size:26px;line-height:1.1}
 .stat span{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .stat span i{width:9px;height:9px;border-radius:50%}
@@ -353,6 +368,7 @@ dialog p.hint{font-size:13px;margin-top:10px}
   <!-- ================= ÚLOHY ================= -->
   <section class="page" id="pg-ulohy">
     <div class="stats" id="stats"></div>
+    <div class="webmiss card" id="webMiss" hidden></div>
 
     <div class="progress card">
       <div class="row"><span>Celkový progres</span><b id="progressTxt"></b></div>
@@ -575,6 +591,7 @@ function taskEl(it, { showDate = true } = {}){
     it.prio === 'low' && h('span', { class:'badge p-low' }, '▼ Nízka'),
     showDate && it.date && h('span', { class:'when' }, '📅 ' + fmtDay(it.date) + (it.time ? ' · ' + it.time : '')),
     !showDate && it.time && h('span', { class:'when' }, '🕑 ' + it.time),
+    missing(it, 'Telefónny web') && h('span', { class:'badge miss', title:'Telefónny web ešte nie je hotový' }, '📱 chýba mobil'),
     it.subs && it.subs.length && h('span', { class:'badge subcount' + (it.subs.every(x => x.done) ? ' full' : '') },
       `☑ ${it.subs.filter(x => x.done).length}/${it.subs.length}`),
     it.note && h('span', { class:'when', title:it.note }, '📝'));
@@ -688,6 +705,11 @@ $('grid').addEventListener('touchend', e => {
 
 // ================= ÚLOHY =================
 let statusFilter = 'all';   // all | todo | doing | done | over
+let missFilter = null;      // one of WEB_SUBS → only tasks where that point isn't done yet
+const WEB_ICONS = { 'Hotový web':'💻', 'Telefónny web':'📱', 'Rezervačný systém':'📅' };
+const WEB_SHORT = { 'Hotový web':'Web', 'Telefónny web':'Mobilný web', 'Rezervačný systém':'Rezervácie' };
+const hasSub = (it, name) => (it.subs || []).find(x => x.text.trim().toLowerCase() === name.toLowerCase());
+const missing = (it, name) => { const sb = hasSub(it, name); return !!sb && !sb.done };
 let scope = 'all';          // all | today | week | nodate
 const SCOPES = { all:'Všetky', today:'Dnes', week:'Tento týždeň', nodate:'Bez dátumu' };
 const SORTS = { prio:'⇅ Podľa dôležitosti', status:'⇅ Podľa stavu', date:'⇅ Podľa dátumu' };
@@ -697,6 +719,30 @@ function renderTasks(){
   const all = data.items;
   const n = { all:all.length, todo:0, doing:0, done:0, over:0 };
   for(const it of all){ n[it.status]++; if(isOver(it)) n.over++ }
+
+  // 🌐 web projects – what's still missing
+  const wm = $('webMiss'); wm.innerHTML = '';
+  const webTasks = all.filter(it => WEB_SUBS.some(nm => hasSub(it, nm)));
+  wm.hidden = !webTasks.length;
+  if(webTasks.length){
+    const row = h('div', { class:'wm-row' });
+    for(const nm of WEB_SUBS){
+      const who = webTasks.filter(it => missing(it, nm));
+      const total = webTasks.filter(it => hasSub(it, nm)).length;
+      row.append(h('button', { type:'button', class:'wm ' + (who.length ? 'has' : 'zero') + (missFilter === nm ? ' on' : ''),
+          title:'Zobraziť, komu ešte chýba: ' + nm,
+          onclick:() => { missFilter = missFilter === nm ? null : nm; renderTasks() } },
+        h('div', { class:'ic' }, WEB_ICONS[nm]), h('b', {}, String(who.length)),
+        h('span', {}, WEB_SHORT[nm] + ' chýba'), h('span', {}, `hotové ${total - who.length}/${total}`)));
+    }
+    wm.append(h('h4', {}, '🌐 Čo chýba na weboch', h('small', {}, missFilter ? 'klikni znova pre všetky' : 'klikni pre zoznam')), row);
+    if(missFilter){
+      const who = webTasks.filter(it => missing(it, missFilter));
+      wm.append(h('div', { class:'wm-names' }, who.length
+        ? [WEB_ICONS[missFilter] + ' ' + missFilter + ' ešte nemajú: ', ...who.flatMap((it, i) => [i ? ', ' : '', h('b', {}, it.text)])]
+        : '✅ Všetci už majú ' + missFilter.toLowerCase() + ' hotový.'));
+    }
+  }
 
   const stats = $('stats'); stats.innerHTML = '';
   [['all','Spolu',null],['todo','Nezačaté','todo'],['doing','Rozpracované','doing'],['done','Hotové','done'],['over','Po termíne','over']]
@@ -722,6 +768,7 @@ function renderTasks(){
   const list = all.filter(it =>
     (statusFilter === 'all' || (statusFilter === 'over' ? isOver(it) : it.status === statusFilter)) &&
     (scope === 'all' || (scope === 'today' && it.date === t) || (scope === 'week' && it.date >= t && it.date <= weekEnd) || (scope === 'nodate' && !it.date)) &&
+    (!missFilter || missing(it, missFilter)) &&
     (!q || (it.text + ' ' + (it.note || '')).toLowerCase().includes(q)));
 
   const wrap = $('groups'); wrap.innerHTML = '';
