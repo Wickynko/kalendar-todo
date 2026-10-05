@@ -570,6 +570,8 @@ function save(){
 }
 // sub-points ("body"): web project presets
 const WEB_SUBS = ['Hotový web', 'Telefónny web', 'Rezervačný systém'];
+const DEFAULT_SUBS = ['Hotový web', 'Telefónny web', 'Poslaný mail'];      // every new task starts with these
+const PRESET_SUBS = [...WEB_SUBS, 'Poslaný mail'];                           // quick-add buttons in the edit dialog
 const mkSubs = list => list.map(text => ({ id:uid(), text, done:false }));
 // status follows the sub-points: all done → Hotové, anything still missing → Rozpracované
 function statusFromSubs(subs, current){
@@ -580,7 +582,7 @@ function statusFromSubs(subs, current){
 function addTask(t){
   const it = { id:uid(), status:'todo', prio:'mid', note:'', time:'', date:'', created:Date.now(), ...t };
   // every new task gets the two web points (unless it already has its own)
-  if(!(it.subs && it.subs.length)) it.subs = mkSubs(['Hotový web', 'Telefónny web']);
+  if(!(it.subs && it.subs.length)) it.subs = mkSubs(DEFAULT_SUBS);
   it.status = statusFromSubs(it.subs, it.status);
   data.items.push(it);
   save();
@@ -836,7 +838,7 @@ $('taskAdd').onsubmit = e => {
   const text = $('tText').value.trim(); if(!text) return;
   const date = tDate.get(), time = readTime($('tTime'));
   if(date === null || time === null) return;
-  addTask({ text, date, time, prio:$('tPrio').value, subs:$('tWeb').checked ? mkSubs(WEB_SUBS) : [] });
+  addTask({ text, date, time, prio:$('tPrio').value, subs:$('tWeb').checked ? mkSubs([...WEB_SUBS, 'Poslaný mail']) : [] });
   $('tText').value = ''; $('tTime').value = ''; $('tPrio').value = 'mid'; $('tWeb').checked = false; tDate.set('');
 };
 $('search').oninput = renderTasks;
@@ -859,9 +861,9 @@ function renderEditSubs(){
   $('eSubCount').textContent = editSubs.length ? `(${d}/${editSubs.length} hotových)` : '';
   // presets: offer only the ones not already there
   const have = new Set(editSubs.map(x => x.text.toLowerCase()));
-  const missing = WEB_SUBS.filter(t => !have.has(t.toLowerCase()));
+  const missing = PRESET_SUBS.filter(t => !have.has(t.toLowerCase()));
   const pr = $('ePresets'); pr.innerHTML = '';
-  if(missing.length > 1) pr.append(h('button', { type:'button', onclick:() => { editSubs.push(...mkSubs(missing)); renderEditSubs() } }, '+ 🌐 Všetky body webu'));
+  if(missing.length > 1) pr.append(h('button', { type:'button', onclick:() => { editSubs.push(...mkSubs(missing)); renderEditSubs() } }, '+ Všetky body'));
   missing.forEach(t => pr.append(h('button', { type:'button', onclick:() => { editSubs.push(...mkSubs([t])); renderEditSubs() } }, '+ ' + t)));
 }
 function addEditSub(){
