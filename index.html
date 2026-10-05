@@ -597,14 +597,27 @@ function taskEl(it, { showDate = true } = {}){
     it.note && h('span', { class:'when', title:it.note }, '📝'));
   const subs = it.subs?.length > 0 && h('div', { class:'subs' }, it.subs.map(sb =>
     h('button', { class:'sub' + (sb.done ? ' on' : ''), type:'button', title:'Klikni pre odškrtnutie',
-      onclick:e => { e.stopPropagation(); sb.done = !sb.done; it.status = statusFromSubs(it.subs, it.status); save() } },
+      onclick:e => { e.stopPropagation(); toggleSub(it, sb, li, showDate) } },
       h('span', { class:'box' }), sb.text)));
   const txt = h('div', { class:'txt', title:'Klikni a uprav text', onclick:e => { e.stopPropagation(); inlineEdit(txt, it) } }, it.text);
   const edit = h('button', { class:'edit-btn', title:'Upraviť detaily (dátum, stav, priorita, poznámka)', 'aria-label':'Upraviť',
     onclick:e => { e.stopPropagation(); openEdit(it) } });
   edit.innerHTML = PEN;
-  return h('li', { class:'task ' + it.status + (it.prio === 'high' ? ' hi' : it.prio === 'low' ? ' lo' : ''), onclick:() => openEdit(it) },
+  const li = h('li', { class:'task ' + it.status + (it.prio === 'high' ? ' hi' : it.prio === 'low' ? ' lo' : ''), onclick:() => openEdit(it) },
     mark, h('div', { class:'body' }, txt, meta, subs), edit);
+  return li;
+}
+
+// ticking a sub-point keeps the task where it is (no re-sort / re-filter),
+// only the row and the counters update; the list re-orders on the next full render
+function toggleSub(it, sb, li, showDate){
+  sb.done = !sb.done;
+  it.status = statusFromSubs(it.subs, it.status);
+  data.updated = Date.now();
+  store.set('data', data);
+  schedulePush();
+  li.replaceWith(taskEl(it, { showDate }));
+  if(page === 'ulohy') renderTasks({ keepList:true });
 }
 
 const PEN = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.4 3.6a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>';
@@ -715,7 +728,7 @@ const SCOPES = { all:'Všetky', today:'Dnes', week:'Tento týždeň', nodate:'Be
 const SORTS = { prio:'⇅ Podľa dôležitosti', status:'⇅ Podľa stavu', date:'⇅ Podľa dátumu' };
 let sortMode = store.get('sortMode', 'prio');
 
-function renderTasks(){
+function renderTasks({ keepList = false } = {}){
   const all = data.items;
   const n = { all:all.length, todo:0, doing:0, done:0, over:0 };
   for(const it of all){ n[it.status]++; if(isOver(it)) n.over++ }
@@ -771,6 +784,7 @@ function renderTasks(){
     (!missFilter || missing(it, missFilter)) &&
     (!q || (it.text + ' ' + (it.note || '')).toLowerCase().includes(q)));
 
+  if(keepList) return;
   const wrap = $('groups'); wrap.innerHTML = '';
   if(!list.length){ wrap.append(h('div', { class:'empty' }, all.length ? 'Nič nezodpovedá filtru.' : 'Zatiaľ žiadne úlohy. Pridaj prvú hore 👆')); return }
 
