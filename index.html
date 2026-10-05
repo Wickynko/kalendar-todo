@@ -496,7 +496,10 @@ const NEXT = { todo:'doing', doing:'done', done:'todo' };
 
 // data v2: { v:2, items:[{id,text,date,time,status,prio,note,created}], updated }
 function migrate(d){
-  if(d && Array.isArray(d.items)) return d;
+  if(d && Array.isArray(d.items)){
+    for(const it of d.items) it.status = statusFromSubs(it.subs, it.status);
+    return d;
+  }
   const items = [];
   for(const [date, arr] of Object.entries((d && d.tasks) || {}))
     for(const t of arr) items.push({ id:t.id, text:t.text, date, time:t.time || '', status:t.done ? 'done' : 'todo', prio:'mid', note:'', created:Date.now() });
@@ -568,14 +571,16 @@ function save(){
 // sub-points ("body"): web project presets
 const WEB_SUBS = ['Hotový web', 'Telefónny web', 'Rezervačný systém'];
 const mkSubs = list => list.map(text => ({ id:uid(), text, done:false }));
-// status follows the sub-points: all done → Hotové, some done → Rozpracované
+// status follows the sub-points: all done → Hotové, anything still missing → Rozpracované
 function statusFromSubs(subs, current){
   if(!subs || !subs.length) return current;
   const d = subs.filter(x => x.done).length;
-  return d === subs.length ? 'done' : d > 0 ? 'doing' : current === 'done' ? 'todo' : current;
+  return d === subs.length ? 'done' : 'doing';
 }
 function addTask(t){
-  data.items.push({ id:uid(), status:'todo', prio:'mid', note:'', time:'', date:'', created:Date.now(), ...t });
+  const it = { id:uid(), status:'todo', prio:'mid', note:'', time:'', date:'', created:Date.now(), ...t };
+  it.status = statusFromSubs(it.subs, it.status);
+  data.items.push(it);
   save();
 }
 
@@ -591,6 +596,7 @@ function taskEl(it, { showDate = true } = {}){
     it.prio === 'low' && h('span', { class:'badge p-low' }, '▼ Nízka'),
     showDate && it.date && h('span', { class:'when' }, '📅 ' + fmtDay(it.date) + (it.time ? ' · ' + it.time : '')),
     !showDate && it.time && h('span', { class:'when' }, '🕑 ' + it.time),
+    missing(it, 'Hotový web') && h('span', { class:'badge miss', title:'Web ešte nie je hotový' }, '💻 chýba web'),
     missing(it, 'Telefónny web') && h('span', { class:'badge miss', title:'Telefónny web ešte nie je hotový' }, '📱 chýba mobil'),
     it.subs?.length > 0 && h('span', { class:'badge subcount' + (it.subs.every(x => x.done) ? ' full' : '') },
       `☑ ${it.subs.filter(x => x.done).length}/${it.subs.length}`),
@@ -878,7 +884,7 @@ $('eSave').onclick = () => {
   const date = eDate.get(), time = readTime($('eTime'));
   if(date === null || time === null) return;
   Object.assign(editing, { text, date, time, note:$('eNote').value.trim(),
-    status:segVal('eStatus') || 'todo', prio:segVal('ePrio') || 'mid', subs:editSubs });
+    status:statusFromSubs(editSubs, segVal('eStatus') || 'todo'), prio:segVal('ePrio') || 'mid', subs:editSubs });
   $('editDlg').close(); save();
 };
 $('eDel').onclick = () => {
