@@ -605,6 +605,7 @@ function taskEl(it, { showDate = true } = {}){
     !showDate && it.time && h('span', { class:'when' }, '🕑 ' + it.time),
     missing(it, 'Hotový web') && h('span', { class:'badge miss', title:'Web ešte nie je hotový' }, '💻 chýba web'),
     missing(it, 'Telefónny web') && h('span', { class:'badge miss', title:'Telefónny web ešte nie je hotový' }, '📱 chýba mobil'),
+    missing(it, 'Poslaný mail') && h('span', { class:'badge miss', title:'Mail ešte nebol poslaný' }, '✉️ chýba mail'),
     it.subs?.length > 0 && h('span', { class:'badge subcount' + (it.subs.every(x => x.done) ? ' full' : '') },
       `☑ ${it.subs.filter(x => x.done).length}/${it.subs.length}`),
     it.note && h('span', { class:'when', title:it.note }, '📝'));
