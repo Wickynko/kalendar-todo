@@ -571,7 +571,6 @@ function save(){
 // sub-points ("body"): web project presets
 const WEB_SUBS = ['Hotový web', 'Telefónny web', 'Rezervačný systém'];
 const mkSubs = list => list.map(text => ({ id:uid(), text, done:false }));
-const AUTO_WEB = /^\s*(dokon[cč]i[tť]|sprav[ií][tť])/i;
 // status follows the sub-points: all done → Hotové, anything still missing → Rozpracované
 function statusFromSubs(subs, current){
   if(!subs || !subs.length) return current;
@@ -580,8 +579,8 @@ function statusFromSubs(subs, current){
 }
 function addTask(t){
   const it = { id:uid(), status:'todo', prio:'mid', note:'', time:'', date:'', created:Date.now(), ...t };
-  // "dokončiť …" / "spraviť …" → automatically gets the two web points
-  if(!(it.subs && it.subs.length) && AUTO_WEB.test(it.text)) it.subs = mkSubs(['Hotový web', 'Telefónny web']);
+  // every new task gets the two web points (unless it already has its own)
+  if(!(it.subs && it.subs.length)) it.subs = mkSubs(['Hotový web', 'Telefónny web']);
   it.status = statusFromSubs(it.subs, it.status);
   data.items.push(it);
   save();
