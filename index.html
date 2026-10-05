@@ -191,12 +191,15 @@ form.quick input[type=time]{width:100px;padding:0 6px}
 .webmiss{padding:14px 16px;margin-bottom:16px}
 .webmiss h4{margin:0 0 10px;font-size:15px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .webmiss h4 small{font-weight:500;color:var(--muted);font-size:12.5px}
-.wm-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.wm-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+@media (max-width:760px){ .wm-row{grid-template-columns:repeat(2,minmax(0,1fr))} }
 .wm{border:2px solid var(--line);background:var(--bg);border-radius:14px;padding:10px 12px;text-align:left;cursor:pointer}
 .wm .ic{font-size:18px}
-.wm b{display:block;font-size:24px;line-height:1.15;margin-top:2px}
+.wm b{display:block;font-size:30px;line-height:1.1;margin:2px 0 2px;font-variant-numeric:tabular-nums}
 .wm span{display:block;font-size:12.5px;color:var(--muted);line-height:1.25}
-.wm.has b{color:var(--over)}
+.wm.has b{color:var(--text)}
+.wm b small{font-size:inherit;color:var(--muted);font-weight:700}
+.wm .miss-n{color:var(--over);font-weight:600}
 .wm.zero b{color:var(--done)}
 .wm.on{border-color:var(--accent);background:var(--accent-soft)}
 .wm-names{margin-top:10px;font-size:13px;color:var(--muted);line-height:1.5}
@@ -730,7 +733,9 @@ $('grid').addEventListener('touchend', e => {
 let statusFilter = 'all';   // all | todo | doing | done | over
 let missFilter = null;      // one of WEB_SUBS → only tasks where that point isn't done yet
 const WEB_ICONS = { 'Hotový web':'💻', 'Telefónny web':'📱', 'Rezervačný systém':'📅' };
-const WEB_SHORT = { 'Hotový web':'Web', 'Telefónny web':'Mobilný web', 'Rezervačný systém':'Rezervácie' };
+const WEB_SHORT = { 'Hotový web':'Web', 'Telefónny web':'Mobilný web', 'Rezervačný systém':'Rezervácie', 'Poslaný mail':'Mail' };
+WEB_ICONS['Poslaný mail'] = '✉️';
+const OVERVIEW = [...WEB_SUBS, 'Poslaný mail'];   // cards in "Čo chýba na weboch"
 const hasSub = (it, name) => (it.subs || []).find(x => x.text.trim().toLowerCase() === name.toLowerCase());
 const missing = (it, name) => { const sb = hasSub(it, name); return !!sb && !sb.done };
 let scope = 'all';          // all | today | week | nodate
@@ -745,25 +750,27 @@ function renderTasks({ keepList = false } = {}){
 
   // 🌐 web projects – what's still missing
   const wm = $('webMiss'); wm.innerHTML = '';
-  const webTasks = all.filter(it => WEB_SUBS.some(nm => hasSub(it, nm)));
+  const webTasks = all.filter(it => OVERVIEW.some(nm => hasSub(it, nm)));
   wm.hidden = !webTasks.length;
   if(webTasks.length){
     const row = h('div', { class:'wm-row' });
-    for(const nm of WEB_SUBS){
+    for(const nm of OVERVIEW){
       const who = webTasks.filter(it => missing(it, nm));
       const total = webTasks.filter(it => hasSub(it, nm)).length;
       row.append(h('button', { type:'button', class:'wm ' + (who.length ? 'has' : 'zero') + (missFilter === nm ? ' on' : ''),
           title:'Zobraziť, komu ešte chýba: ' + nm,
           onclick:() => { missFilter = missFilter === nm ? null : nm; renderTasks() } },
-        h('div', { class:'ic' }, WEB_ICONS[nm]), h('b', {}, String(who.length)),
-        h('span', {}, WEB_SHORT[nm] + ' chýba'), h('span', {}, `hotové ${total - who.length}/${total}`)));
+        h('div', { class:'ic' }, WEB_ICONS[nm]),
+        h('b', {}, String(total - who.length), h('small', {}, '/' + total)),
+        h('span', {}, WEB_SHORT[nm] + ' hotové'),
+        who.length ? h('span', { class:'miss-n' }, 'chýba ' + who.length) : h('span', {}, '✓ všetko hotové')));
     }
     wm.append(h('h4', {}, '🌐 Čo chýba na weboch', h('small', {}, missFilter ? 'klikni znova pre všetky' : 'klikni pre zoznam')), row);
     if(missFilter){
       const who = webTasks.filter(it => missing(it, missFilter));
       wm.append(h('div', { class:'wm-names' }, who.length
         ? [WEB_ICONS[missFilter] + ' ' + missFilter + ' ešte nemajú: ', ...who.flatMap((it, i) => [i ? ', ' : '', h('b', {}, it.text)])]
-        : '✅ Všetci už majú ' + missFilter.toLowerCase() + ' hotový.'));
+        : '✅ ' + missFilter + ' – hotové všade.'));
     }
   }
 
